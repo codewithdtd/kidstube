@@ -1,0 +1,62 @@
+# Development & Local Environment
+.env
+.env.local
+.env.*.local
+*.local
+!.env.example
+
+# IDEs & Editors
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Backend (Java / Maven / Gradle)
+target/
+build/
+.gradle/
+*.class
+*.jar
+!**/.mvn/wrapper/maven-wrapper.jar
+*.war
+hs_err_pid*
+replay_pid*
+
+# Mobile / Frontend (Node / React Native / Expo)
+node_modules/
+.expo/
+dist/
+web-build/
+*.tsbuildinfo
+
+# Mobile Native Builds
+*.apk
+*.aab
+android/.gradle/
+android/app/build/
+ios/Pods/
+ios/build/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Documentation, Plans, Guides & AI Kit (Code-Only Repository Rule)
+docs/
+.agent-kit/
+.cursor/
+.memory-bank/
+.github/
+.clineinstructions
+CLINE_INSTRUCTIONS.md
+CLAUDE.md
+AGENTS.md
+BEST_PRACTICES.md
+PROJECT_PLAN.md
+PROJECT_RULES.md
+
+
