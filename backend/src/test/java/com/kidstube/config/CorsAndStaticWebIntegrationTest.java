@@ -54,6 +54,26 @@ class CorsAndStaticWebIntegrationTest {
     }
 
     @Test
+    @DisplayName("Static Parent Portal index.html should contain search, filter, and preview modal elements")
+    void testParentPortalIndexContainsSearchAndPreviewModal() throws Exception {
+        mockMvc.perform(get("/parent/index.html"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("video-search-input")))
+                .andExpect(content().string(containsString("filter-status-all")))
+                .andExpect(content().string(containsString("preview-modal")));
+    }
+
+    @Test
+    @DisplayName("Static Parent Portal app.js should contain search filter and video preview logic")
+    void testParentPortalAppJsContainsFilterAndPreviewLogic() throws Exception {
+        mockMvc.perform(get("/parent/app.js"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("getFilteredVideos")))
+                .andExpect(content().string(containsString("openVideoPreview")))
+                .andExpect(content().string(containsString("filterByStatus")));
+    }
+
+    @Test
     @DisplayName("Root index.html redirect should be accessible")
     void testRootIndexAccessible() throws Exception {
         mockMvc.perform(get("/index.html"))

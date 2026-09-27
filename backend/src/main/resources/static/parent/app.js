@@ -3,6 +3,8 @@ let currentTab = 'videos';
 let categories = [];
 let allVideos = [];
 let selectedCategoryId = null;
+let searchQuery = '';
+let statusFilter = 'ALL'; // 'ALL', 'ACTIVE', 'INACTIVE'
 let pendingDeleteVideoId = null;
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -95,53 +97,172 @@ function filterVideosByCategory(categoryId) {
   });
   loadVideos();
 }
+function handleSearchVideos(val) {
+  searchQuery = (val || '').trim();
+  const clearBtn = document.getElementById('btn-clear-search');
+  if (clearBtn) {
+    if (searchQuery) clearBtn.classList.remove('hidden');
+    else clearBtn.classList.add('hidden');
+  }
+  renderVideos();
+}
+
+function clearVideoSearch() {
+  const input = document.getElementById('video-search-input');
+  if (input) input.value = '';
+  searchQuery = '';
+  const clearBtn = document.getElementById('btn-clear-search');
+  if (clearBtn) clearBtn.classList.add('hidden');
+  renderVideos();
+}
+
+function filterByStatus(status) {
+  statusFilter = status;
+  ['ALL', 'ACTIVE', 'INACTIVE'].forEach(s => {
+    const btn = document.getElementById(`filter-status-${s.toLowerCase()}`);
+    if (btn) {
+      if (s === status) {
+        btn.className = 'px-3 py-1.5 rounded-lg bg-white shadow-sm text-slate-900 font-bold transition';
+      } else {
+        btn.className = 'px-3 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 transition';
+      }
+    }
+  });
+  renderVideos();
+}
+
+function resetAllFilters() {
+  clearVideoSearch();
+  filterByStatus('ALL');
+  filterVideosByCategory(null);
+}
+
+function getFilteredVideos() {
+  return allVideos.filter(video => {
+    // 1. Status filter
+    if (statusFilter === 'ACTIVE' && !video.isActive) return false;
+    if (statusFilter === 'INACTIVE' && video.isActive) return false;
+
+    // 2. Search query filter
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      const titleMatch = (video.title || '').toLowerCase().includes(q);
+      const channelMatch = (video.channelTitle || '').toLowerCase().includes(q);
+      if (!titleMatch && !channelMatch) return false;
+    }
+
+    return true;
+  });
+}
+
+function openVideoPreview(youtubeVideoId, title) {
+  const modal = document.getElementById('preview-modal');
+  const iframe = document.getElementById('preview-iframe');
+  const titleEl = document.getElementById('preview-title');
+  if (titleEl) titleEl.textContent = title || 'Xem trước video';
+  if (iframe) {
+    iframe.src = `https://www.youtube-nocookie.com/embed/${youtubeVideoId}?autoplay=1&rel=0`;
+  }
+  if (modal) modal.classList.remove('hidden');
+  lucide.createIcons();
+}
+
+function closeVideoPreview() {
+  const modal = document.getElementById('preview-modal');
+  const iframe = document.getElementById('preview-iframe');
+  if (iframe) iframe.src = '';
+  if (modal) modal.classList.add('hidden');
+}
+
+
 
 
 function renderVideos() {
   const grid = document.getElementById('video-grid');
   const empty = document.getElementById('video-empty-state');
   const badge = document.getElementById('video-count-badge');
-  const activeCount = allVideos.filter(v => v.isActive).length;
-  badge.textContent = `Tổng cộng: ${allVideos.length} video (${activeCount} đang hiển thị cho bé)`;
+  const emptyTitle = document.getElementById('video-empty-title');
+  const emptyDesc = document.getElementById('video-empty-desc');
+  const resetBtn = document.getElementById('btn-reset-filters');
 
-  if (allVideos.length === 0) {
+  const filtered = getFilteredVideos();
+  const totalActive = allVideos.filter(v => v.isActive).length;
+
+  if (searchQuery || statusFilter !== 'ALL' || selectedCategoryId !== null) {
+    badge.textContent = `Hiển thị ${filtered.length} / ${allVideos.length} video (${totalActive} đang mở cho bé)`;
+  } else {
+    badge.textContent = `Tổng cộng: ${allVideos.length} video (${totalActive} đang mở cho bé)`;
+  }
+
+  if (filtered.length === 0) {
     grid.innerHTML = '';
     empty.classList.remove('hidden');
+    if (allVideos.length === 0) {
+      if (emptyTitle) emptyTitle.textContent = 'Chưa có video nào';
+      if (emptyDesc) emptyDesc.textContent = 'Hãy dán link video hoặc kênh YouTube ở khung trên để nạp thêm video cho bé.';
+      if (resetBtn) resetBtn.classList.add('hidden');
+    } else {
+      if (emptyTitle) emptyTitle.textContent = 'Không tìm thấy video phù hợp';
+      if (emptyDesc) emptyDesc.textContent = 'Thử tìm từ khóa khác hoặc thiết lập lại bộ lọc.';
+      if (resetBtn) resetBtn.classList.remove('hidden');
+    }
+    lucide.createIcons();
     return;
   }
   empty.classList.add('hidden');
 
-  grid.innerHTML = allVideos.map(video => `
-    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden flex flex-col justify-between hover:shadow-md transition">
+  grid.innerHTML = filtered.map(video => `
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden flex flex-col justify-between hover:shadow-md transition group">
       <div>
-        <div class="relative aspect-video bg-slate-900 overflow-hidden group">
+        <div class="relative aspect-video bg-slate-900 overflow-hidden cursor-pointer" onclick="openVideoPreview('${video.youtubeVideoId}', '${escapeHtml(video.title)}')">
           <img src="${video.thumbnailUrl || 'https://images.unsplash.com/photo-1534447677768-be436bb09401?w=600&auto=format&fit=crop'}"
                alt="${escapeHtml(video.title)}" class="w-full h-full object-cover group-hover:scale-105 transition duration-300">
-          <span class="absolute bottom-2 right-2 px-2 py-0.5 rounded bg-black/75 text-white text-[11px] font-medium">
+
+          <div class="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition flex items-center justify-center">
+            <div class="p-3 rounded-full bg-white/90 text-sky-600 shadow-lg transform group-hover:scale-110 transition">
+              <i data-lucide="play" class="w-5 h-5 fill-current"></i>
+            </div>
+          </div>
+
+          <span class="absolute bottom-2 right-2 px-2 py-0.5 rounded bg-black/75 text-white text-[11px] font-medium pointer-events-none">
             ${formatSeconds(video.durationSeconds)}
           </span>
-          <span class="absolute top-2 left-2 px-2 py-0.5 rounded-full text-[10px] font-bold ${video.isActive ? 'bg-emerald-500 text-white' : 'bg-slate-700 text-slate-200'}">
-            ${video.isActive ? 'Đang hiện' : 'Đang ẩn'}
+          <span class="absolute top-2 left-2 px-2 py-0.5 rounded-full text-[10px] font-bold ${video.isActive ? 'bg-emerald-500 text-white' : 'bg-slate-700 text-slate-200'} pointer-events-none">
+            ${video.isActive ? '🟢 Đang mở' : '⚪ Đang ẩn'}
           </span>
         </div>
         <div class="p-4 space-y-1.5">
-          <div class="flex items-center space-x-1.5 text-[11px] text-sky-600 font-semibold truncate">
-            <span>${escapeHtml(video.categoryName || 'Chung')}</span>
-            ${video.channelTitle ? `<span class="text-slate-400">• ${escapeHtml(video.channelTitle)}</span>` : ''}
+          <div class="flex items-center justify-between text-[11px]">
+            <span class="px-2 py-0.5 rounded-md bg-sky-50 text-sky-700 font-semibold truncate max-w-[130px]">
+              ${escapeHtml(video.categoryName || 'Chung')}
+            </span>
+            ${video.channelTitle ? `
+              <span class="text-slate-500 font-medium truncate max-w-[140px] flex items-center space-x-1" title="${escapeHtml(video.channelTitle)}">
+                <i data-lucide="tv" class="w-3 h-3 text-slate-400 shrink-0"></i>
+                <span class="truncate">${escapeHtml(video.channelTitle)}</span>
+              </span>` : ''}
           </div>
-          <h4 class="text-sm font-bold text-slate-900 line-clamp-2" title="${escapeHtml(video.title)}">
+          <h4 class="text-sm font-bold text-slate-900 line-clamp-2 leading-snug cursor-pointer hover:text-sky-600 transition"
+              onclick="openVideoPreview('${video.youtubeVideoId}', '${escapeHtml(video.title)}')"
+              title="${escapeHtml(video.title)}">
             ${escapeHtml(video.title)}
           </h4>
         </div>
       </div>
       <div class="px-4 py-3 bg-slate-50 border-t border-slate-100 flex items-center justify-between">
-        <label class="flex items-center space-x-2 cursor-pointer">
-          <input type="checkbox" ${video.isActive ? 'checked' : ''} onchange="toggleVideoStatus(${video.id}, this.checked)" class="w-4 h-4 rounded text-sky-600 accent-sky-600">
-          <span class="text-xs font-semibold text-slate-600">${video.isActive ? 'Hiện' : 'Ẩn'}</span>
+        <label class="flex items-center space-x-2 cursor-pointer select-none">
+          <input type="checkbox" ${video.isActive ? 'checked' : ''} onchange="toggleVideoStatus(${video.id}, this.checked)" class="w-4 h-4 rounded text-sky-600 accent-sky-600 cursor-pointer">
+          <span class="text-xs font-semibold ${video.isActive ? 'text-emerald-700' : 'text-slate-500'}">${video.isActive ? 'Mở cho bé' : 'Đang ẩn'}</span>
         </label>
-        <button onclick="promptDeleteVideo(${video.id})" class="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition" title="Xóa video">
-          <i data-lucide="trash-2" class="w-4 h-4"></i>
-        </button>
+        <div class="flex items-center space-x-1">
+          <a href="https://www.youtube.com/watch?v=${video.youtubeVideoId}" target="_blank" rel="noopener noreferrer"
+             class="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition" title="Mở trên YouTube">
+            <i data-lucide="external-link" class="w-4 h-4"></i>
+          </a>
+          <button onclick="promptDeleteVideo(${video.id})" class="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition" title="Xóa video khỏi app bé">
+            <i data-lucide="trash-2" class="w-4 h-4"></i>
+          </button>
+        </div>
       </div>
     </div>
   `).join('');
