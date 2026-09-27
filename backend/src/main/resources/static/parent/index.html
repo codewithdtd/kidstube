@@ -47,6 +47,10 @@
           <span class="w-2 h-2 rounded-full bg-slate-400" id="header-status-dot"></span>
           <span id="header-status-text">Đang kiểm tra...</span>
         </div>
+        <button id="btn-quick-toggle-lock" onclick="toggleQuickLock()" class="px-3 py-1.5 rounded-xl text-xs font-bold border transition flex items-center space-x-1.5 bg-slate-100 border-slate-200 text-slate-700 hover:bg-slate-200" title="Bật/Tắt khóa nhanh">
+          <i data-lucide="lock" class="w-3.5 h-3.5" id="header-lock-icon"></i>
+          <span id="header-quick-lock-text">Khóa Ngay</span>
+        </button>
         <a href="/swagger-ui.html" target="_blank" class="text-xs text-slate-600 hover:text-sky-600 px-3 py-1.5 rounded-lg border border-slate-200 hover:border-sky-300 transition flex items-center space-x-1.5">
           <i data-lucide="file-code-2" class="w-4 h-4"></i>
           <span class="hidden md:inline">Swagger API</span>
@@ -170,40 +174,57 @@
           </div>
         </div>
         <form id="settings-form" onsubmit="handleSaveSettings(event)" class="space-y-6">
-          <div class="bg-slate-50 rounded-xl p-5 border border-slate-200">
-            <div class="flex items-center justify-between mb-2">
+          <div class="bg-slate-50 rounded-xl p-5 border border-slate-200 space-y-3">
+            <div class="flex items-center justify-between mb-1">
               <label class="text-sm font-bold text-slate-800 flex items-center space-x-2">
                 <i data-lucide="hourglass" class="w-4 h-4 text-sky-600"></i><span>Giới hạn xem mỗi ngày</span>
               </label>
               <span id="slider-limit-display" class="text-base font-extrabold text-sky-600 bg-sky-100 px-3 py-0.5 rounded-full">45 phút</span>
             </div>
             <input type="range" id="input-daily-limit" min="5" max="360" step="5" value="45" oninput="updateLimitDisplay(this.value)" class="w-full accent-sky-600 cursor-pointer">
-          </div>
-
-          <div class="bg-slate-50 rounded-xl p-5 border border-slate-200 space-y-3">
-            <label class="text-sm font-bold text-slate-800 flex items-center space-x-2">
-              <i data-lucide="moon" class="w-4 h-4 text-indigo-600"></i><span>Khung giờ đi ngủ (Bedtime Mode)</span>
-            </label>
-            <div class="grid grid-cols-2 gap-4">
-              <div>
-                <label class="block text-xs font-semibold text-slate-600 mb-1">Bắt đầu ngủ</label>
-                <input type="time" id="input-bedtime-start" required class="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm font-semibold">
-              </div>
-              <div>
-                <label class="block text-xs font-semibold text-slate-600 mb-1">Thức dậy lúc</label>
-                <input type="time" id="input-bedtime-end" required class="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm font-semibold">
-              </div>
+            <div class="flex flex-wrap items-center gap-2 pt-1 text-xs">
+              <span class="text-slate-400 font-medium">Chọn nhanh:</span>
+              <button type="button" onclick="setLimitPreset(30)" class="px-2.5 py-1 rounded-lg bg-white border border-slate-200 hover:border-sky-400 font-semibold text-slate-700 transition">30p</button>
+              <button type="button" onclick="setLimitPreset(45)" class="px-2.5 py-1 rounded-lg bg-white border border-slate-200 hover:border-sky-400 font-semibold text-slate-700 transition">45p</button>
+              <button type="button" onclick="setLimitPreset(60)" class="px-2.5 py-1 rounded-lg bg-white border border-slate-200 hover:border-sky-400 font-semibold text-slate-700 transition">60p</button>
+              <button type="button" onclick="setLimitPreset(90)" class="px-2.5 py-1 rounded-lg bg-white border border-slate-200 hover:border-sky-400 font-semibold text-slate-700 transition">90p</button>
+              <button type="button" onclick="setLimitPreset(120)" class="px-2.5 py-1 rounded-lg bg-white border border-slate-200 hover:border-sky-400 font-semibold text-slate-700 transition">120p</button>
             </div>
           </div>
 
-          <div class="bg-rose-50 rounded-xl p-5 border border-rose-200 flex items-center justify-between">
+          <div class="bg-slate-50 rounded-xl p-5 border border-slate-200 space-y-3">
+            <div class="flex items-center justify-between">
+              <label class="text-sm font-bold text-slate-800 flex items-center space-x-2">
+                <i data-lucide="moon" class="w-4 h-4 text-indigo-600"></i><span>Khung giờ đi ngủ (Bedtime Mode)</span>
+              </label>
+              <span class="text-[11px] text-indigo-700 bg-indigo-50 border border-indigo-100 px-2 py-0.5 rounded-full font-medium">Khóa app khi đến giờ</span>
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <label class="block text-xs font-semibold text-slate-600 mb-1">Bắt đầu ngủ (Tối)</label>
+                <input type="time" id="input-bedtime-start" required class="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm font-semibold outline-none focus:ring-2 focus:ring-indigo-500 bg-white">
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-slate-600 mb-1">Thức dậy lúc (Sáng)</label>
+                <input type="time" id="input-bedtime-end" required class="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm font-semibold outline-none focus:ring-2 focus:ring-indigo-500 bg-white">
+              </div>
+            </div>
+            <div class="flex flex-wrap items-center gap-2 pt-1 text-xs">
+              <span class="text-slate-400 font-medium">Gợi ý:</span>
+              <button type="button" onclick="setBedtimePreset('20:30', '06:30')" class="px-2.5 py-1 rounded-lg bg-white border border-slate-200 hover:border-indigo-400 font-semibold text-slate-700 transition">20:30 - 06:30</button>
+              <button type="button" onclick="setBedtimePreset('21:00', '07:00')" class="px-2.5 py-1 rounded-lg bg-white border border-slate-200 hover:border-indigo-400 font-semibold text-slate-700 transition">21:00 - 07:00</button>
+              <button type="button" onclick="setBedtimePreset('21:30', '07:30')" class="px-2.5 py-1 rounded-lg bg-white border border-slate-200 hover:border-indigo-400 font-semibold text-slate-700 transition">21:30 - 07:30</button>
+            </div>
+          </div>
+
+          <div id="instant-lock-card" class="bg-rose-50 rounded-xl p-5 border border-rose-200 flex items-center justify-between transition">
             <div>
               <label for="input-is-locked" class="text-sm font-bold text-rose-900 cursor-pointer flex items-center space-x-2">
                 <i data-lucide="lock" class="w-4 h-4 text-rose-600"></i><span>Khóa ứng dụng ngay lập tức</span>
               </label>
-              <p class="text-xs text-rose-700 mt-1">Khi bật, màn hình của bé sẽ bị khóa ngay lập tức.</p>
+              <p class="text-xs text-rose-700 mt-1">Khi bật, màn hình của bé sẽ bị khóa ngay lập tức không phụ thuộc vào thời gian xem.</p>
             </div>
-            <input type="checkbox" id="input-is-locked" class="w-6 h-6 text-rose-600 rounded cursor-pointer accent-rose-600">
+            <input type="checkbox" id="input-is-locked" onchange="handleInstantLockToggle(this.checked)" class="w-6 h-6 text-rose-600 rounded cursor-pointer accent-rose-600">
           </div>
 
           <div class="pt-2 flex justify-end">
@@ -245,21 +266,35 @@
       </div>
 
       <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-        <div class="p-6 border-b border-slate-100 flex items-center justify-between">
-          <h3 class="text-base font-bold text-slate-900">Nhật Ký Xem Video Gần Đây</h3>
-          <button onclick="loadHistoryData()" class="px-3 py-1.5 rounded-lg border border-slate-200 text-xs font-semibold hover:text-sky-600 transition flex items-center space-x-1">
-            <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i><span>Làm mới</span>
+        <div class="p-5 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <div class="flex items-center space-x-2">
+              <h3 class="text-base font-bold text-slate-900">Nhật Ký Xem Video Gần Đây</h3>
+              <span id="history-count-badge" class="text-xs text-slate-500 font-medium"></span>
+            </div>
+            <p class="text-xs text-slate-400 mt-0.5">Bấm vào thumbnail video để xem lại nội dung bé đã xem</p>
+          </div>
+          <button id="btn-refresh-history" onclick="loadHistoryData()" class="px-3.5 py-1.5 rounded-xl border border-slate-200 text-xs font-semibold hover:text-sky-600 hover:border-sky-300 transition flex items-center space-x-1.5 self-start sm:self-auto">
+            <i data-lucide="refresh-cw" class="w-3.5 h-3.5" id="history-refresh-icon"></i><span>Làm mới</span>
           </button>
         </div>
         <div class="overflow-x-auto">
           <table class="w-full text-left text-sm text-slate-600">
             <thead class="bg-slate-50 text-[11px] uppercase text-slate-400 font-semibold border-b border-slate-200">
-              <tr><th class="py-3 px-6">Video</th><th class="py-3 px-6">Thời gian</th><th class="py-3 px-6">Thời điểm</th></tr>
+              <tr>
+                <th class="py-3 px-6">Video đã xem</th>
+                <th class="py-3 px-6">Thời lượng</th>
+                <th class="py-3 px-6">Thời điểm xem</th>
+              </tr>
             </thead>
             <tbody id="history-table-body" class="divide-y divide-slate-100"></tbody>
           </table>
         </div>
-        <div id="history-empty-state" class="hidden p-8 text-center text-slate-400 text-xs">Chưa có lịch sử xem video nào.</div>
+        <div id="history-empty-state" class="hidden p-12 text-center text-slate-400 text-xs">
+          <i data-lucide="clock" class="w-8 h-8 text-slate-300 mx-auto mb-2"></i>
+          <span class="font-semibold text-slate-600 block">Chưa có lịch sử xem video nào</span>
+          <span class="text-slate-400 block mt-1">Khi bé xem video trên thiết bị di động, dữ liệu sẽ tự động đồng bộ về đây.</span>
+        </div>
       </div>
     </section>
   </main>

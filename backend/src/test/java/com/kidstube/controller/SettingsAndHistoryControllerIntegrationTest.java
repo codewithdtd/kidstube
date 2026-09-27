@@ -19,6 +19,8 @@ import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
+
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -64,6 +66,21 @@ class SettingsAndHistoryControllerIntegrationTest {
             .andExpect(jsonPath("$.bedtimeEnd", is("06:30")))
             .andExpect(jsonPath("$.isLocked", is(false)));
     }
+
+    @Test
+    @DisplayName("PATCH /api/v1/parent/settings/lock should toggle lock status and return 200")
+    void toggleLock_shouldReturn200() throws Exception {
+        mockMvc.perform(patch("/api/v1/parent/settings/lock")
+                .param("isLocked", "true"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.isLocked", is(true)));
+
+        mockMvc.perform(patch("/api/v1/parent/settings/lock")
+                .param("isLocked", "false"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.isLocked", is(false)));
+    }
+
 
     @Test
     @DisplayName("PUT /api/v1/parent/settings with invalid time format should return 400 RFC 7807")

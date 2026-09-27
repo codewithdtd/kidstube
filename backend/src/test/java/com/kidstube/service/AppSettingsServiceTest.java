@@ -89,4 +89,25 @@ class AppSettingsServiceTest {
         assertThat(response.isLocked()).isTrue();
         verify(appSettingRepository).save(existing);
     }
+
+    @Test
+    @DisplayName("toggleLock: Should toggle isLocked status and save")
+    void toggleLock_success() {
+        AppSetting existing = AppSetting.builder()
+            .id(1)
+            .dailyTimeLimitMinutes(45)
+            .bedtimeStart(LocalTime.of(21, 0))
+            .bedtimeEnd(LocalTime.of(7, 0))
+            .isLocked(false)
+            .build();
+
+        when(appSettingRepository.findById(1)).thenReturn(Optional.of(existing));
+        when(appSettingRepository.save(any(AppSetting.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        SettingsResponse response = appSettingsService.toggleLock(true);
+
+        assertThat(response.isLocked()).isTrue();
+        assertThat(response.dailyTimeLimitMinutes()).isEqualTo(45);
+        verify(appSettingRepository).save(existing);
+    }
 }

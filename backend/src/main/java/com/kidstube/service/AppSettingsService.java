@@ -40,6 +40,17 @@ public class AppSettingsService {
     }
 
     @Transactional
+    public SettingsResponse toggleLock(boolean isLocked) {
+        AppSetting setting = getOrCreateSettings();
+        setting.setIsLocked(isLocked);
+        setting.setUpdatedAt(OffsetDateTime.now());
+
+        AppSetting saved = appSettingRepository.save(setting);
+        return SettingsResponse.fromEntity(saved);
+    }
+
+
+    @Transactional
     public AppSetting getOrCreateSettings() {
         return appSettingRepository.findById(DEFAULT_SETTINGS_ID)
             .orElseGet(() -> {

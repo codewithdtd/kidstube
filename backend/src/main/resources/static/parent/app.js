@@ -363,6 +363,43 @@ function updateLimitDisplay(val) {
   document.getElementById('slider-limit-display').textContent = `${val} phút`;
 }
 
+function setLimitPreset(val) {
+  const slider = document.getElementById('input-daily-limit');
+  if (slider) {
+    slider.value = val;
+    updateLimitDisplay(val);
+  }
+}
+
+function setBedtimePreset(start, end) {
+  const startEl = document.getElementById('input-bedtime-start');
+  const endEl = document.getElementById('input-bedtime-end');
+  if (startEl) startEl.value = start;
+  if (endEl) endEl.value = end;
+}
+
+async function handleInstantLockToggle(checked) {
+  await toggleLockApi(checked);
+}
+
+async function toggleQuickLock() {
+  const lockInput = document.getElementById('input-is-locked');
+  const nextState = lockInput ? !lockInput.checked : true;
+  await toggleLockApi(nextState);
+}
+
+async function toggleLockApi(isLocked) {
+  try {
+    const res = await fetch(`/api/v1/parent/settings/lock?isLocked=${isLocked}`, { method: 'PATCH' });
+    if (!res.ok) throw new Error('Không thể cập nhật trạng thái khóa');
+    showToast(isLocked ? 'Đã khóa ứng dụng của bé ngay lập tức' : 'Đã mở khóa ứng dụng của bé');
+    await loadSettings();
+    await loadAppStatus();
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+
 async function handleSaveSettings(e) {
   e.preventDefault();
   const dailyLimitMinutes = parseInt(document.getElementById('input-daily-limit').value, 10);
@@ -424,19 +461,44 @@ async function loadAppStatus() {
       let rText = 'Đã khóa';
       let rDesc = 'Ứng dụng đang bị khóa';
       if (s.lockReason === 'BEDTIME') {
-        rText = 'Giờ ngủ'; rDesc = 'Đang trong giờ đi ngủ của bé';
+        rText = 'Giờ ngủ 🌙'; rDesc = 'Đang trong giờ đi ngủ của bé';
         dot.className = 'w-2 h-2 rounded-full bg-indigo-500';
       } else if (s.lockReason === 'TIME_LIMIT_EXCEEDED') {
-        rText = 'Hết giờ'; rDesc = 'Bé đã xem hết thời gian hôm nay';
+        rText = 'Hết giờ ⏳'; rDesc = 'Bé đã xem hết thời gian hôm nay';
         dot.className = 'w-2 h-2 rounded-full bg-amber-500';
       } else {
-        rText = 'Khóa thủ công'; rDesc = 'Ba mẹ đã bấm nút khóa từ xa';
+        rText = 'Khóa thủ công 🔒'; rDesc = 'Ba mẹ đã bật khóa khẩn cấp';
         dot.className = 'w-2 h-2 rounded-full bg-rose-500';
       }
       text.textContent = rText;
       mTitle.textContent = rText;
       mDesc.textContent = rDesc;
     }
+
+    // Cập nhật trạng thái nút Khóa Nhanh ở Header và Thẻ Khóa ở Tab Cài đặt
+    const quickLockBtn = document.getElementById('btn-quick-toggle-lock');
+    const quickLockText = document.getElementById('header-quick-lock-text');
+    const lockCard = document.getElementById('instant-lock-card');
+    const lockInput = document.getElementById('input-is-locked');
+
+    const isLockedNow = (s.lockReason === 'MANUAL_LOCK') || (lockInput && lockInput.checked);
+
+    if (isLockedNow) {
+      if (quickLockBtn) {
+        quickLockBtn.className = 'px-3 py-1.5 rounded-xl text-xs font-bold border transition flex items-center space-x-1.5 bg-rose-600 border-rose-700 text-white shadow-sm hover:bg-rose-700';
+      }
+      if (quickLockText) quickLockText.textContent = 'Mở Khóa';
+      if (lockCard) lockCard.className = 'bg-rose-100 rounded-xl p-5 border-2 border-rose-400 flex items-center justify-between transition shadow-sm';
+      if (lockInput) lockInput.checked = true;
+    } else {
+      if (quickLockBtn) {
+        quickLockBtn.className = 'px-3 py-1.5 rounded-xl text-xs font-bold border transition flex items-center space-x-1.5 bg-slate-100 border-slate-200 text-slate-700 hover:bg-slate-200';
+      }
+      if (quickLockText) quickLockText.textContent = 'Khóa Ngay';
+      if (lockCard) lockCard.className = 'bg-rose-50 rounded-xl p-5 border border-rose-200 flex items-center justify-between transition';
+      if (lockInput) lockInput.checked = false;
+    }
+
     lucide.createIcons();
   } catch (err) {
     console.error(err);
@@ -444,39 +506,69 @@ async function loadAppStatus() {
 }
 
 async function loadHistoryData() {
+  const refreshIcon = document.getElementById('history-refresh-icon');
+  if (refreshIcon) refreshIcon.classList.add('animate-spin');
+
   try {
     const res = await fetch('/api/v1/parent/history?limit=20');
     if (!res.ok) return;
     const summary = await res.json();
     const tbody = document.getElementById('history-table-body');
     const empty = document.getElementById('history-empty-state');
+    const countBadge = document.getElementById('history-count-badge');
 
     if (!summary.recentLogs || summary.recentLogs.length === 0) {
       tbody.innerHTML = '';
       empty.classList.remove('hidden');
+      if (countBadge) countBadge.textContent = '(0)';
       return;
     }
     empty.classList.add('hidden');
+    if (countBadge) countBadge.textContent = `(${summary.recentLogs.length} phiên gần nhất)`;
 
     tbody.innerHTML = summary.recentLogs.map(item => {
       const d = new Date(item.watchedAt);
       const timeStr = d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
-      const dateStr = d.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' });
-      const min = Math.round(item.watchedSeconds / 60);
+      const dateStr = d.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
+      const min = Math.floor(item.watchedSeconds / 60);
+      const sec = item.watchedSeconds % 60;
+      const durationFormatted = min > 0 ? `${min} phút ${sec > 0 ? `${sec}s` : ''}` : `${sec} giây`;
 
       return `
-        <tr class="hover:bg-slate-50 transition">
-          <td class="py-3 px-6 flex items-center space-x-3">
-            <img src="${item.thumbnailUrl || ''}" class="w-12 h-8 object-cover rounded bg-slate-100 flex-shrink-0">
-            <span class="font-bold text-slate-800 truncate text-xs" title="${escapeHtml(item.title)}">${escapeHtml(item.title)}</span>
+        <tr class="hover:bg-slate-50 transition group">
+          <td class="py-3.5 px-6 flex items-center space-x-3.5">
+            <div class="relative w-14 h-9 rounded-lg overflow-hidden bg-slate-900 shrink-0 cursor-pointer shadow-sm group-hover:shadow group-hover:scale-105 transition duration-200"
+                 onclick="openVideoPreview('${item.youtubeVideoId}', '${escapeHtml(item.title)}')"
+                 title="Bấm để xem lại video">
+              <img src="${item.thumbnailUrl || ''}" class="w-full h-full object-cover">
+              <div class="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition">
+                <i data-lucide="play" class="w-4 h-4 text-white fill-white"></i>
+              </div>
+            </div>
+            <div class="min-w-0 flex-1">
+              <span class="font-bold text-slate-800 text-xs line-clamp-1 cursor-pointer hover:text-sky-600 transition"
+                    onclick="openVideoPreview('${item.youtubeVideoId}', '${escapeHtml(item.title)}')"
+                    title="${escapeHtml(item.title)}">
+                ${escapeHtml(item.title)}
+              </span>
+            </div>
           </td>
-          <td class="py-3 px-6 text-xs font-semibold text-slate-700">${min > 0 ? `${min}p ` : ''}${item.watchedSeconds % 60}s</td>
-          <td class="py-3 px-6 text-xs text-slate-500">${timeStr} (${dateStr})</td>
+          <td class="py-3.5 px-6 text-xs whitespace-nowrap">
+            <span class="px-2.5 py-1 rounded-lg bg-slate-100 text-slate-800 font-bold border border-slate-200">
+              ${durationFormatted}
+            </span>
+          </td>
+          <td class="py-3.5 px-6 text-xs text-slate-500 whitespace-nowrap">
+            <span class="font-semibold text-slate-700">${timeStr}</span> <span class="text-slate-400">· ${dateStr}</span>
+          </td>
         </tr>
       `;
     }).join('');
+    lucide.createIcons();
   } catch (err) {
     console.error(err);
+  } finally {
+    if (refreshIcon) refreshIcon.classList.remove('animate-spin');
   }
 }
 

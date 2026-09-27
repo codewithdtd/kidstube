@@ -13,6 +13,7 @@ import static org.hamcrest.Matchers.containsString;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.options;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.forwardedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -74,11 +75,46 @@ class CorsAndStaticWebIntegrationTest {
     }
 
     @Test
+    @DisplayName("Static Parent Portal index.html and app.js should contain screen time presets and emergency lock controls")
+    void testParentPortalContainsScreenTimeAndLockControls() throws Exception {
+        mockMvc.perform(get("/parent/index.html"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("btn-quick-toggle-lock")))
+                .andExpect(content().string(containsString("setLimitPreset")))
+                .andExpect(content().string(containsString("setBedtimePreset")))
+                .andExpect(content().string(containsString("history-count-badge")));
+
+        mockMvc.perform(get("/parent/app.js"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("toggleQuickLock")))
+                .andExpect(content().string(containsString("toggleLockApi")))
+                .andExpect(content().string(containsString("setLimitPreset")))
+                .andExpect(content().string(containsString("setBedtimePreset")));
+    }
+
+    @Test
     @DisplayName("Root index.html redirect should be accessible")
     void testRootIndexAccessible() throws Exception {
         mockMvc.perform(get("/index.html"))
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("/parent/index.html")));
     }
+
+    @Test
+    @DisplayName("Parent portal routes /parent and /parent/ should forward to /parent/index.html")
+    void testParentPortalRouteAliases() throws Exception {
+        mockMvc.perform(get("/parent"))
+                .andExpect(status().isOk())
+                .andExpect(forwardedUrl("/parent/index.html"));
+
+        mockMvc.perform(get("/parent/"))
+                .andExpect(status().isOk())
+                .andExpect(forwardedUrl("/parent/index.html"));
+
+        mockMvc.perform(get("/"))
+                .andExpect(status().isOk())
+                .andExpect(forwardedUrl("/parent/index.html"));
+    }
 }
+
 
