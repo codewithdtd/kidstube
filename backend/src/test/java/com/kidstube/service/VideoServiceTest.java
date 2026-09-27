@@ -141,6 +141,41 @@ class VideoServiceTest {
     }
 
     @Test
+    @DisplayName("Nên tự động chọn danh mục ngẫu nhiên khi categoryId là null (Lean Parent UX)")
+    void shouldPickRandomCategoryWhenCategoryIdIsNull() {
+        ImportVideoRequest request = new ImportVideoRequest("https://youtu.be/vid12345678", null);
+
+        when(categoryRepository.findAll()).thenReturn(List.of(sampleCategory));
+        when(urlParser.parse(request.url())).thenReturn(
+                new YouTubeParsedUrl(YouTubeParsedUrl.ParsedType.SINGLE_VIDEO, "vid12345678")
+        );
+        when(videoRepository.findByYoutubeVideoId("vid12345678")).thenReturn(Optional.empty());
+        when(metadataFetcher.fetchVideoMetadata("vid12345678")).thenReturn(
+                new YouTubeVideoMetadata("vid12345678", "Vui cùng bé", "Kid Creator", "", "https://example.com/thumb.jpg", 120)
+        );
+        when(channelRepository.findByYoutubeChannelId(any())).thenReturn(Optional.of(sampleChannel));
+
+        Video savedVideo = Video.builder()
+                .id(101L)
+                .youtubeVideoId("vid12345678")
+                .title("Vui cùng bé")
+                .thumbnailUrl("https://example.com/thumb.jpg")
+                .durationSeconds(120)
+                .category(sampleCategory)
+                .channel(sampleChannel)
+                .isActive(true)
+                .build();
+        when(videoRepository.save(any(Video.class))).thenReturn(savedVideo);
+
+        ImportResultResponse response = videoService.importFromUrl(request);
+
+        assertThat(response.importType()).isEqualTo("SINGLE_VIDEO");
+        assertThat(response.importedCount()).isEqualTo(1);
+        verify(categoryRepository).findAll();
+        verify(videoRepository).save(any(Video.class));
+    }
+
+    @Test
     @DisplayName("Nên ném ngoại lệ ResourceNotFoundException khi categoryId không tồn tại")
     void shouldThrowExceptionWhenCategoryNotFound() {
         ImportVideoRequest request = new ImportVideoRequest("https://youtu.be/vid12345678", 999L);

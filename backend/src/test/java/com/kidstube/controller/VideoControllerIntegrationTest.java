@@ -74,7 +74,7 @@ class VideoControllerIntegrationTest {
     }
 
     @Test
-    @DisplayName("POST /api/v1/parent/videos/import - Báo lỗi RFC 7807 400 khi thiếu thông tin bắt buộc")
+    @DisplayName("POST /api/v1/parent/videos/import - Báo lỗi RFC 7807 400 khi thiếu thông tin URL bắt buộc")
     void shouldReturnProblemDetailsWhenImportValidationFails() throws Exception {
         ImportVideoRequest invalidRequest = new ImportVideoRequest("", null);
 
@@ -84,8 +84,7 @@ class VideoControllerIntegrationTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.title", is("Validation Failed")))
                 .andExpect(jsonPath("$.status", is(400)))
-                .andExpect(jsonPath("$.validationErrors.url", notNullValue()))
-                .andExpect(jsonPath("$.validationErrors.categoryId", notNullValue()));
+                .andExpect(jsonPath("$.validationErrors.url", notNullValue()));
     }
 
     @Test

@@ -23,6 +23,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ThreadLocalRandom;
 
 @Service
 @Transactional
@@ -69,8 +70,7 @@ public class VideoService {
     }
 
     public ImportResultResponse importFromUrl(ImportVideoRequest request) {
-        Category category = categoryRepository.findById(request.categoryId())
-                .orElseThrow(() -> new ResourceNotFoundException("Danh mục không tồn tại với ID: " + request.categoryId()));
+        Category category = resolveCategory(request.categoryId());
 
         YouTubeParsedUrl parsedUrl = urlParser.parse(request.url());
 
@@ -79,6 +79,26 @@ public class VideoService {
         } else {
             return importChannel(parsedUrl, category);
         }
+    }
+
+    private Category resolveCategory(Long categoryId) {
+        if (categoryId != null) {
+            return categoryRepository.findById(categoryId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Danh mục không tồn tại với ID: " + categoryId));
+        }
+        return getRandomCategory();
+    }
+
+    private Category getRandomCategory() {
+        List<Category> allCategories = categoryRepository.findAll();
+        if (allCategories.isEmpty()) {
+            throw new ResourceNotFoundException("Chưa có danh mục nào trong hệ thống");
+        }
+        int randomIndex = ThreadLocalRandom.current().nextInt(allCategories.size());
+        Category chosen = allCategories.get(randomIndex);
+        log.info("No category specified in import request, randomly assigned to category: {} (ID: {})",
+                chosen.getName(), chosen.getId());
+        return chosen;
     }
 
     private ImportResultResponse importSingleVideo(String videoId, Category category) {
