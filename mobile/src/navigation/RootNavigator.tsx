@@ -3,6 +3,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { NavigationContainer } from '@react-navigation/native';
 import { RootStackParamList } from '../types/navigation';
 import { HomeScreen } from '../features/feed/screens/HomeScreen';
+import { ShortsScreen } from '../features/shorts/screens/ShortsScreen';
 import { PlayerScreen } from '../features/player/screens/PlayerScreen';
 import { ScreenLockModal } from '../features/screentime/screens/ScreenLockModal';
 
@@ -18,6 +19,13 @@ export const RootNavigator: React.FC = () => {
         }}
       >
         <Stack.Screen name="Home" component={HomeScreen} />
+        <Stack.Screen
+          name="Shorts"
+          component={ShortsScreen}
+          options={{
+            animation: 'none',
+          }}
+        />
         <Stack.Screen
           name="Player"
           component={PlayerScreen}

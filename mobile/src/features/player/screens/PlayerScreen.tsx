@@ -25,6 +25,7 @@ export const PlayerScreen: React.FC<PlayerScreenProps> = ({ navigation, route })
   const [upNextList, setUpNextList] = useState<Video[]>([]);
   const [isPlaying, setIsPlaying] = useState<boolean>(true);
   const [isKidsLocked, setIsKidsLocked] = useState<boolean>(false);
+  const [isEnded, setIsEnded] = useState<boolean>(false);
   const [isSubscribed, setIsSubscribed] = useState<boolean>(false);
   const [likeCount, setLikeCount] = useState<number>(34200);
   const [isLiked, setIsLiked] = useState<boolean>(false);
@@ -102,9 +103,13 @@ export const PlayerScreen: React.FC<PlayerScreenProps> = ({ navigation, route })
   }, [currentVideo.id]);
 
   const upNextVideos = useMemo(() => {
-    const sourceList = upNextList.length > 0 ? upNextList : MOCK_VIDEOS;
-    return sourceList.filter((v) => v.id !== currentVideo.id);
-  }, [upNextList, currentVideo.id]);
+    // Prefer backend videos; fallback to mock videos to guarantee there are always safe approved options
+    const backendCandidates = upNextList.filter((v) => v.youtubeVideoId !== currentVideo.youtubeVideoId);
+    if (backendCandidates.length > 0) {
+      return backendCandidates;
+    }
+    return MOCK_VIDEOS.filter((v) => v.youtubeVideoId !== currentVideo.youtubeVideoId);
+  }, [upNextList, currentVideo.youtubeVideoId]);
 
   const handleSelectNextVideo = (video: Video) => {
     if (watchedSecondsRef.current > 0) {
@@ -112,8 +117,14 @@ export const PlayerScreen: React.FC<PlayerScreenProps> = ({ navigation, route })
       watchedSecondsRef.current = 0;
     }
     setCurrentVideo(video);
+    setIsEnded(false);
     setIsPlaying(true);
     setIsLiked(false);
+  };
+
+  const handleReplay = () => {
+    setIsEnded(false);
+    setIsPlaying(true);
   };
 
   const handleBackPress = () => {
@@ -168,12 +179,24 @@ export const PlayerScreen: React.FC<PlayerScreenProps> = ({ navigation, route })
         videoId={currentVideo.youtubeVideoId}
         playing={isPlaying}
         onStateChange={(state) => {
-          if (state === 'ended' && upNextVideos.length > 0) handleSelectNextVideo(upNextVideos[0]);
-          else if (state === 'playing') setIsPlaying(true);
-          else if (state === 'paused') setIsPlaying(false);
+          if (state === 'ended') {
+            if (upNextVideos.length > 0) {
+              handleSelectNextVideo(upNextVideos[0]);
+            } else {
+              setIsPlaying(false);
+              setIsEnded(true);
+            }
+          } else if (state === 'playing') {
+            setIsPlaying(true);
+            setIsEnded(false);
+          } else if (state === 'paused') {
+            setIsPlaying(false);
+          }
         }}
         isKidsLocked={isKidsLocked}
         onToggleKidsLock={handleToggleKidsLock}
+        isEnded={isEnded}
+        onReplay={handleReplay}
       />
       <ScrollView style={styles.scrollContent} showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollInner}>
         <TouchableOpacity activeOpacity={0.7} onPress={() => setIsTitleExpanded(!isTitleExpanded)} style={styles.titleSection}>

@@ -1,18 +1,40 @@
-import { Platform } from 'react-native';
+import { Platform, NativeModules } from 'react-native';
 import { Video, Category, ScreenTimeStatus } from '../types/models';
 import { MOCK_VIDEOS, FALLBACK_CATEGORIES } from '../features/feed/data/mockVideos';
 
-// Dynamic Base URL based on platform
+/**
+ * Dynamic Base URL resolution:
+ * 1. Expo Go on real device: Extracts the computer LAN IP from Metro bundler's scriptURL (e.g. 192.168.2.103:8081).
+ * 2. Android Emulator: 10.0.2.2 (default loopback to PC host).
+ * 3. Fallback: Host computer Wi-Fi LAN IP (192.168.2.103:8080) or localhost for web.
+ */
 const getApiBaseUrl = (): string => {
-  if (Platform.OS === 'android') {
-    // Android emulator loopback to host machine
-    return 'http://10.0.2.2:8080';
+  try {
+    const scriptURL: string | undefined = NativeModules?.SourceCode?.scriptURL;
+    if (scriptURL) {
+      const match = scriptURL.match(/^https?:\/\/([^:/]+)/);
+      if (match && match[1]) {
+        const host = match[1];
+        if (host !== 'localhost' && host !== '127.0.0.1') {
+          return `http://${host}:8080`;
+        }
+      }
+    }
+  } catch (e) {
+    console.warn('[API] Could not detect Metro scriptURL, falling back to LAN IP:', e);
   }
-  // Web, iOS simulator, or local desktop
-  return 'http://localhost:8080';
+
+  if (Platform.OS === 'web') {
+    return 'http://localhost:8080';
+  }
+
+  // Fallback to computer LAN IP on local Wi-Fi for Expo Go physical devices
+  return 'http://192.168.2.103:8080';
 };
 
 export const API_BASE_URL = getApiBaseUrl();
+console.log(`[KidsTube API] Active Base URL -> ${API_BASE_URL}`);
+
 const REQUEST_TIMEOUT_MS = 3500;
 
 // Helper to fetch with timeout
@@ -42,7 +64,7 @@ async function fetchWithTimeout(url: string, options: RequestInit = {}): Promise
 export async function fetchVideos(categoryId?: number): Promise<Video[]> {
   try {
     const query = categoryId ? `?categoryId=${categoryId}` : '';
-    const res = await fetchWithTimeout(`${API_BASE_URL}/api/v1/videos/kid/feed${query}`);
+    const res = await fetchWithTimeout(`${API_BASE_URL}/api/v1/videos${query}`);
     if (!res.ok) {
       throw new Error(`Server returned ${res.status}`);
     }
@@ -109,7 +131,7 @@ export async function recordWatchHistory(videoId: number, watchedSeconds: number
   if (watchedSeconds <= 0) return true;
 
   try {
-    const res = await fetchWithTimeout(`${API_BASE_URL}/api/v1/watch-histories`, {
+    const res = await fetchWithTimeout(`${API_BASE_URL}/api/v1/history`, {
       method: 'POST',
       body: JSON.stringify({ videoId, watchedSeconds }),
     });

@@ -1,12 +1,13 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAppTheme } from '../context/ThemeContext';
 
 interface YouTubeBottomBarProps {
   activeTab?: string;
   onSelectTab?: (tab: string) => void;
-  onOpenParentGate: () => void;
+  onOpenParentGate?: () => void;
 }
 
 export const YouTubeBottomBar: React.FC<YouTubeBottomBarProps> = ({
@@ -15,9 +16,22 @@ export const YouTubeBottomBar: React.FC<YouTubeBottomBarProps> = ({
   onOpenParentGate,
 }) => {
   const { colors } = useAppTheme();
+  const insets = useSafeAreaInsets();
+  const bottomPadding = Math.max(insets.bottom, 10);
+  const barHeight = 52 + bottomPadding;
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.bottomNavBg, borderTopColor: colors.bottomNavBorder }]}>
+    <View
+      style={[
+        styles.container,
+        {
+          backgroundColor: colors.bottomNavBg,
+          borderTopColor: colors.bottomNavBorder,
+          height: barHeight,
+          paddingBottom: bottomPadding,
+        },
+      ]}
+    >
       {/* Tab 1: Home */}
       <TouchableOpacity
         style={styles.tabItem}
@@ -46,18 +60,25 @@ export const YouTubeBottomBar: React.FC<YouTubeBottomBarProps> = ({
         onPress={() => onSelectTab?.('shorts')}
       >
         <MaterialCommunityIcons
-          name="play-box-multiple-outline"
+          name={activeTab === 'shorts' ? 'play-box-multiple' : 'play-box-multiple-outline'}
           size={24}
-          color={colors.bottomNavInactive}
+          color={activeTab === 'shorts' ? colors.bottomNavActive : colors.bottomNavInactive}
         />
-        <Text style={[styles.tabLabel, { color: colors.bottomNavInactive }]}>Shorts</Text>
+        <Text
+          style={[
+            styles.tabLabel,
+            { color: activeTab === 'shorts' ? colors.bottomNavActive : colors.bottomNavInactive },
+          ]}
+        >
+          Shorts
+        </Text>
       </TouchableOpacity>
 
-      {/* Tab 3: (+) Secret Parent Trigger */}
+      {/* Tab 3: (+) Create/Upload (Inert - Does nothing) */}
       <TouchableOpacity
         style={styles.tabItem}
         activeOpacity={0.7}
-        onPress={onOpenParentGate}
+        onPress={() => onOpenParentGate?.()}
       >
         <View style={[styles.createBtn, { borderColor: colors.textPrimary }]}>
           <MaterialCommunityIcons name="plus" size={24} color={colors.textPrimary} />
@@ -78,11 +99,11 @@ export const YouTubeBottomBar: React.FC<YouTubeBottomBarProps> = ({
         <Text style={[styles.tabLabel, { color: colors.bottomNavInactive }]}>Đăng ký</Text>
       </TouchableOpacity>
 
-      {/* Tab 5: You (Secret Parent Trigger) */}
+      {/* Tab 5: You (Inert - Does nothing) */}
       <TouchableOpacity
         style={styles.tabItem}
         activeOpacity={0.7}
-        onPress={onOpenParentGate}
+        onPress={() => onOpenParentGate?.()}
       >
         <View style={[styles.avatarCircle, { backgroundColor: colors.youtubeRed }]}>
           <Text style={styles.avatarText}>K</Text>
@@ -95,12 +116,10 @@ export const YouTubeBottomBar: React.FC<YouTubeBottomBarProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    height: 52,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-around',
     borderTopWidth: StyleSheet.hairlineWidth,
-    paddingBottom: 2,
   },
   tabItem: {
     flex: 1,

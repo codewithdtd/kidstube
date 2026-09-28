@@ -18,7 +18,6 @@ import { useAppTheme } from '../../../context/ThemeContext';
 import { YouTubeHeader } from '../../../components/YouTubeHeader';
 import { YouTubeBottomBar } from '../../../components/YouTubeBottomBar';
 import { YouTubeVideoCard } from '../components/YouTubeVideoCard';
-import { ParentPinModal } from '../../../components/ParentPinModal';
 import { fetchVideos, fetchCategories, fetchAppStatus } from '../../../services/apiClient';
 
 export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
@@ -28,7 +27,6 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   const [videos, setVideos] = useState<Video[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
-  const [isParentModalOpen, setIsParentModalOpen] = useState<boolean>(false);
 
   const loadInitialData = useCallback(async () => {
     try {
@@ -79,7 +77,6 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
     <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]} edges={['top', 'left', 'right']}>
       <YouTubeHeader
         onSearchPress={() => Alert.alert('Tìm kiếm', 'Tìm kiếm video thiếu nhi an toàn')}
-        onParentPinPress={() => setIsParentModalOpen(true)}
       />
 
       <View style={[styles.chipsContainer, { backgroundColor: colors.background }]}>
@@ -195,16 +192,10 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
 
       <YouTubeBottomBar
         activeTab="home"
-        onOpenParentGate={() => setIsParentModalOpen(true)}
-      />
-
-      <ParentPinModal
-        visible={isParentModalOpen}
-        onClose={() => setIsParentModalOpen(false)}
-        onTriggerEmergencyLock={() => {
-          navigation.navigate('ScreenLock', {
-            reason: 'Phụ huynh đã bật chế độ khóa màn hình khẩn cấp! 🌙',
-          });
+        onSelectTab={(tab) => {
+          if (tab === 'shorts') {
+            navigation.navigate('Shorts');
+          }
         }}
       />
     </SafeAreaView>

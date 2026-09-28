@@ -1,12 +1,10 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { ScreenLockProps } from '../../../types/navigation';
-import { ParentPinModal } from '../../../components/ParentPinModal';
 
 export const ScreenLockModal: React.FC<ScreenLockProps> = ({ route, navigation }) => {
   const reason = route.params?.reason || 'Đến giờ ngủ rồi bé yêu ơi! Hãy để mắt nghỉ ngơi nhé! 🌙';
-  const [isPinModalOpen, setIsPinModalOpen] = useState(false);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -27,25 +25,16 @@ export const ScreenLockModal: React.FC<ScreenLockProps> = ({ route, navigation }
           </Text>
         </View>
 
-        {/* Stealth Parent Unlock Trigger */}
+        {/* Direct Unlock without PIN authentication */}
         <TouchableOpacity
           style={styles.parentUnlockBtn}
-          onPress={() => setIsPinModalOpen(true)}
+          onPress={() => navigation.replace('Home')}
           activeOpacity={0.7}
         >
-          <MaterialCommunityIcons name="shield-key-outline" size={18} color="#64748b" />
-          <Text style={styles.parentUnlockText}>Cổng Phụ Huynh (Nhập PIN để mở)</Text>
+          <MaterialCommunityIcons name="lock-open-variant-outline" size={18} color="#64748b" />
+          <Text style={styles.parentUnlockText}>Mở khóa màn hình</Text>
         </TouchableOpacity>
       </View>
-
-      <ParentPinModal
-        visible={isPinModalOpen}
-        onClose={() => setIsPinModalOpen(false)}
-        onUnlockSuccess={() => {
-          setIsPinModalOpen(false);
-          navigation.replace('Home');
-        }}
-      />
     </SafeAreaView>
   );
 };

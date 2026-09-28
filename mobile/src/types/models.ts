@@ -26,6 +26,21 @@ export interface Video {
 }
 
 /**
+ * Short video item for vertical full-screen Shorts feed
+ */
+export interface ShortVideo {
+  id: number;
+  youtubeVideoId: string;
+  title: string;
+  channelTitle: string;
+  channelAvatarUrl?: string;
+  likesCount: number;
+  commentsCount: number;
+  soundTitle?: string;
+}
+
+
+/**
  * Screen Time Status model corresponding to Spring Boot AppStatusResponse
  */
 export interface ScreenTimeStatus {
