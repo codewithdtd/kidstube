@@ -41,6 +41,10 @@ export const ScreenLockModal: React.FC<ScreenLockProps> = ({ route, navigation }
       <ParentPinModal
         visible={isPinModalOpen}
         onClose={() => setIsPinModalOpen(false)}
+        onUnlockSuccess={() => {
+          setIsPinModalOpen(false);
+          navigation.replace('Home');
+        }}
       />
     </SafeAreaView>
   );

@@ -6,6 +6,7 @@ export interface Category {
   name: string;
   iconUrl?: string | null;
   displayOrder: number;
+  videoCount?: number;
 }
 
 /**
@@ -18,22 +19,24 @@ export interface Video {
   thumbnailUrl: string;
   durationSeconds: number;
   categoryId: number;
+  categoryName?: string;
   channelTitle?: string | null;
   isActive: boolean;
+  createdAt?: string;
 }
 
 /**
- * Screen Time Status model corresponding to Spring Boot ScreenTimeStatusDTO
+ * Screen Time Status model corresponding to Spring Boot AppStatusResponse
  */
 export interface ScreenTimeStatus {
   isAllowed: boolean;
   remainingSeconds: number;
-  lockReason: 'NONE' | 'MANUAL_LOCK' | 'BEDTIME' | 'TIME_LIMIT_EXCEEDED' | string;
-  bedtimeStart: string;
-  bedtimeEnd: string;
+  dailyLimitMinutes: number;
+  todayUsedSeconds: number;
   isLocked: boolean;
-  dailyTimeLimitMinutes: number;
-  watchedSecondsToday: number;
+  isBedtime: boolean;
+  lockReason: 'NONE' | 'MANUAL_LOCK' | 'BEDTIME' | 'TIME_LIMIT_EXCEEDED' | string | null;
+  message?: string | null;
 }
 
 /**
@@ -43,5 +46,4 @@ export interface WatchHistoryRequest {
   videoId: number;
   watchedSeconds: number;
 }
-
 

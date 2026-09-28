@@ -1,4 +1,4 @@
-import { Video } from '../../../types/models';
+import { Video, Category } from '../../../types/models';
 
 export interface CategoryChip {
   id: number;
@@ -12,6 +12,14 @@ export const CATEGORIES: CategoryChip[] = [
   { id: 3, label: 'Khám phá & Khoa học' },
   { id: 4, label: 'Tiếng Anh' },
   { id: 5, label: 'Mới cho bạn' },
+];
+
+export const FALLBACK_CATEGORIES: Category[] = [
+  { id: 1, name: 'Hoạt hình', displayOrder: 1 },
+  { id: 2, name: 'Âm nhạc', displayOrder: 2 },
+  { id: 3, name: 'Khám phá & Khoa học', displayOrder: 3 },
+  { id: 4, name: 'Tiếng Anh', displayOrder: 4 },
+  { id: 5, name: 'Mới cho bạn', displayOrder: 5 },
 ];
 
 export const MOCK_VIDEOS: Video[] = [

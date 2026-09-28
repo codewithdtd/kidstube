@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import {
   View,
   Text,
@@ -17,10 +17,12 @@ import { YouTubeVideoPlayer } from '../components/YouTubeVideoPlayer';
 import { UpNextVideoCard } from '../components/UpNextVideoCard';
 import { MOCK_VIDEOS } from '../../feed/data/mockVideos';
 import { formatViews } from '../../../utils/formatters';
+import { fetchAppStatus, recordWatchHistory, fetchVideos } from '../../../services/apiClient';
 
 export const PlayerScreen: React.FC<PlayerScreenProps> = ({ navigation, route }) => {
   const { colors, isDark } = useAppTheme();
   const [currentVideo, setCurrentVideo] = useState<Video>(route.params.video);
+  const [upNextList, setUpNextList] = useState<Video[]>([]);
   const [isPlaying, setIsPlaying] = useState<boolean>(true);
   const [isKidsLocked, setIsKidsLocked] = useState<boolean>(false);
   const [isSubscribed, setIsSubscribed] = useState<boolean>(false);
@@ -30,14 +32,47 @@ export const PlayerScreen: React.FC<PlayerScreenProps> = ({ navigation, route })
 
   const [remainingSeconds, setRemainingSeconds] = useState<number>(1800);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const watchedSecondsRef = useRef<number>(0);
 
+  // Sync screen time limit from backend on mount
+  useEffect(() => {
+    fetchAppStatus().then((status) => {
+      if (!status.isAllowed || status.isLocked || status.isBedtime) {
+        navigation.replace('ScreenLock', {
+          reason: status.message || 'Đã đến giờ nghỉ ngơi rồi bé ơi! 🌙',
+        });
+        return;
+      }
+      setRemainingSeconds(status.remainingSeconds);
+    });
+
+    fetchVideos().then((vids) => {
+      if (vids && vids.length > 0) {
+        setUpNextList(vids);
+      }
+    });
+  }, [navigation]);
+
+  // Periodic heartbeat reporting watched duration
   useEffect(() => {
     if (isPlaying && !isKidsLocked) {
       timerRef.current = setInterval(() => {
+        watchedSecondsRef.current += 1;
+
+        // Auto-report heartbeat every 30 seconds
+        if (watchedSecondsRef.current >= 30) {
+          recordWatchHistory(currentVideo.id, watchedSecondsRef.current);
+          watchedSecondsRef.current = 0;
+        }
+
         setRemainingSeconds((prev) => {
           if (prev <= 1) {
             if (timerRef.current) clearInterval(timerRef.current);
             setIsPlaying(false);
+            if (watchedSecondsRef.current > 0) {
+              recordWatchHistory(currentVideo.id, watchedSecondsRef.current);
+              watchedSecondsRef.current = 0;
+            }
             navigation.replace('ScreenLock', {
               reason: 'Đã hết thời gian xem hôm nay rồi bé ơi! Hãy để mắt nghỉ ngơi nhé 🌙',
             });
@@ -49,19 +84,44 @@ export const PlayerScreen: React.FC<PlayerScreenProps> = ({ navigation, route })
     } else if (timerRef.current) {
       clearInterval(timerRef.current);
     }
+
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
-  }, [isPlaying, isKidsLocked, navigation]);
+  }, [isPlaying, isKidsLocked, navigation, currentVideo.id]);
 
-  const upNextVideos = useMemo(() => {
-    return MOCK_VIDEOS.filter((v) => v.id !== currentVideo.id);
+  // Flush remaining watched duration on unmount
+  useEffect(() => {
+    const activeVideoId = currentVideo.id;
+    return () => {
+      if (watchedSecondsRef.current > 0) {
+        recordWatchHistory(activeVideoId, watchedSecondsRef.current);
+        watchedSecondsRef.current = 0;
+      }
+    };
   }, [currentVideo.id]);
 
+  const upNextVideos = useMemo(() => {
+    const sourceList = upNextList.length > 0 ? upNextList : MOCK_VIDEOS;
+    return sourceList.filter((v) => v.id !== currentVideo.id);
+  }, [upNextList, currentVideo.id]);
+
   const handleSelectNextVideo = (video: Video) => {
+    if (watchedSecondsRef.current > 0) {
+      recordWatchHistory(currentVideo.id, watchedSecondsRef.current);
+      watchedSecondsRef.current = 0;
+    }
     setCurrentVideo(video);
     setIsPlaying(true);
     setIsLiked(false);
+  };
+
+  const handleBackPress = () => {
+    if (watchedSecondsRef.current > 0) {
+      recordWatchHistory(currentVideo.id, watchedSecondsRef.current);
+      watchedSecondsRef.current = 0;
+    }
+    navigation.goBack();
   };
 
   const handleToggleKidsLock = () => {
@@ -75,6 +135,7 @@ export const PlayerScreen: React.FC<PlayerScreenProps> = ({ navigation, route })
     }
   };
 
+
   const handleLike = () => {
     if (isLiked) {
       setIsLiked(false);
@@ -86,11 +147,12 @@ export const PlayerScreen: React.FC<PlayerScreenProps> = ({ navigation, route })
   };
 
   const remainingMinutes = Math.floor(remainingSeconds / 60);
+
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={colors.surface} />
       <View style={[styles.topBar, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
-        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+        <TouchableOpacity style={styles.backButton} onPress={handleBackPress}>
           <MaterialCommunityIcons name="chevron-down" size={30} color={colors.textPrimary} />
         </TouchableOpacity>
         <View style={[styles.screenTimeChip, { backgroundColor: colors.chipInactiveBg }]}>
@@ -118,94 +180,110 @@ export const PlayerScreen: React.FC<PlayerScreenProps> = ({ navigation, route })
           <Text style={[styles.videoTitle, { color: colors.textPrimary }]} numberOfLines={isTitleExpanded ? undefined : 2}>
             {currentVideo.title}
           </Text>
-          <MaterialCommunityIcons name={isTitleExpanded ? 'chevron-up' : 'chevron-down'} size={20} color={colors.textSecondary} />
+          <Text style={[styles.videoViews, { color: colors.textSecondary }]}>
+            {formatViews(currentVideo.id * 142000 + 45000)} • Được ba mẹ phê duyệt an toàn
+          </Text>
         </TouchableOpacity>
-        <View style={styles.metaRow}>
-          <Text style={[styles.metaText, { color: colors.textSecondary }]}>3.4M lượt xem • 2 tuần trước</Text>
-          <View style={[styles.safeTag, { backgroundColor: colors.chipInactiveBg }]}>
-            <MaterialCommunityIcons name="shield-check" size={13} color="#22c55e" />
-            <Text style={[styles.safeTagText, { color: '#22c55e' }]}>Đã duyệt an toàn</Text>
-          </View>
-        </View>
+
         <View style={[styles.channelRow, { borderBottomColor: colors.border }]}>
-          <View style={[styles.channelAvatar, { backgroundColor: colors.chipActiveBg }]}>
-            <MaterialCommunityIcons name="youtube" size={20} color="#fff" />
-          </View>
-          <View style={styles.channelInfo}>
-            <Text style={[styles.channelTitle, { color: colors.textPrimary }]}>{currentVideo.channelTitle || 'KidsTube Official'}</Text>
-            <Text style={[styles.subscriberCount, { color: colors.textSecondary }]}>1.25M người đăng ký</Text>
+          <View style={styles.channelLeft}>
+            <View style={[styles.channelAvatar, { backgroundColor: colors.youtubeRed }]}>
+              <Text style={styles.channelAvatarLetter}>{(currentVideo.channelTitle || 'K')[0].toUpperCase()}</Text>
+            </View>
+            <View style={styles.channelInfo}>
+              <Text style={[styles.channelName, { color: colors.textPrimary }]} numberOfLines={1}>
+                {currentVideo.channelTitle || 'Kênh Thiếu Nhi An Toàn'}
+              </Text>
+              <Text style={[styles.channelSubs, { color: colors.textSecondary }]}>1.42M người đăng ký</Text>
+            </View>
           </View>
           <TouchableOpacity
-            style={[styles.subscribeBtn, { backgroundColor: isSubscribed ? colors.chipInactiveBg : colors.chipActiveBg }]}
+            style={[styles.subscribeBtn, isSubscribed ? { backgroundColor: colors.chipInactiveBg } : { backgroundColor: colors.textPrimary }]}
             onPress={() => setIsSubscribed(!isSubscribed)}
-            activeOpacity={0.8}
           >
-            <Text style={[styles.subscribeText, { color: isSubscribed ? colors.chipInactiveText : colors.chipActiveText }]}>
+            <Text style={[styles.subscribeBtnText, isSubscribed ? { color: colors.textPrimary } : { color: colors.background }]}>
               {isSubscribed ? 'Đã đăng ký' : 'Đăng ký'}
             </Text>
           </TouchableOpacity>
         </View>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.actionsBar}>
-          <TouchableOpacity style={[styles.actionPill, { backgroundColor: colors.chipInactiveBg }]} onPress={handleLike} activeOpacity={0.7}>
-            <MaterialCommunityIcons name={isLiked ? 'thumb-up' : 'thumb-up-outline'} size={18} color={isLiked ? colors.youtubeRed : colors.textPrimary} />
-            <Text style={[styles.actionText, { color: colors.textPrimary }]}>{formatViews(likeCount)}</Text>
+
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.actionRow}>
+          <View style={[styles.actionPillGroup, { backgroundColor: colors.chipInactiveBg }]}>
+            <TouchableOpacity style={styles.actionSubBtn} onPress={handleLike}>
+              <MaterialCommunityIcons name={isLiked ? 'thumb-up' : 'thumb-up-outline'} size={18} color={isLiked ? colors.youtubeRed : colors.textPrimary} />
+              <Text style={[styles.actionText, { color: colors.textPrimary }]}>{formatViews(likeCount)}</Text>
+            </TouchableOpacity>
             <View style={[styles.actionDivider, { backgroundColor: colors.border }]} />
-            <MaterialCommunityIcons name="thumb-down-outline" size={18} color={colors.textPrimary} />
-          </TouchableOpacity>
-          <TouchableOpacity style={[styles.actionPill, { backgroundColor: colors.chipInactiveBg }]} onPress={() => Alert.alert('Chia sẻ', 'Tính năng đang phát triển')} activeOpacity={0.7}>
+            <TouchableOpacity style={styles.actionSubBtn} onPress={() => Alert.alert('KidsTube', 'Cảm ơn phản hồi của bé!')}>
+              <MaterialCommunityIcons name="thumb-down-outline" size={18} color={colors.textPrimary} />
+            </TouchableOpacity>
+          </View>
+
+          <TouchableOpacity style={[styles.actionPill, { backgroundColor: colors.chipInactiveBg }]} onPress={() => Alert.alert('Chia sẻ', 'Chia sẻ link an toàn cho gia đình.')}>
             <MaterialCommunityIcons name="share-outline" size={18} color={colors.textPrimary} />
             <Text style={[styles.actionText, { color: colors.textPrimary }]}>Chia sẻ</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={[styles.actionPill, { backgroundColor: colors.chipInactiveBg }]} onPress={() => Alert.alert('Tải xuống', 'Đã lưu vào danh sách xem offline!')} activeOpacity={0.7}>
+
+          <TouchableOpacity style={[styles.actionPill, { backgroundColor: colors.chipInactiveBg }]} onPress={() => Alert.alert('Tải xuống', 'Video đã có sẵn trong bộ nhớ đệm an toàn.')}>
             <MaterialCommunityIcons name="download-outline" size={18} color={colors.textPrimary} />
             <Text style={[styles.actionText, { color: colors.textPrimary }]}>Tải xuống</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={[styles.actionPill, { backgroundColor: colors.chipInactiveBg }]} onPress={() => Alert.alert('Lưu', 'Đã lưu vào danh sách yêu thích của bé!')} activeOpacity={0.7}>
+
+          <TouchableOpacity style={[styles.actionPill, { backgroundColor: colors.chipInactiveBg }]} onPress={() => Alert.alert('Lưu', 'Đã lưu vào danh sách yêu thích của bé.')}>
             <MaterialCommunityIcons name="playlist-plus" size={18} color={colors.textPrimary} />
             <Text style={[styles.actionText, { color: colors.textPrimary }]}>Lưu</Text>
           </TouchableOpacity>
         </ScrollView>
-        <View style={styles.upNextSection}>
-          <Text style={[styles.upNextSectionTitle, { color: colors.textPrimary }]}>Video tiếp theo cho bé</Text>
-          {upNextVideos.map((video) => (
-            <UpNextVideoCard key={video.id} video={video} onPress={handleSelectNextVideo} />
-          ))}
+
+        <View style={styles.upNextHeader}>
+          <Text style={[styles.upNextTitle, { color: colors.textPrimary }]}>Video tiếp theo</Text>
+          <View style={[styles.autoplayBadge, { backgroundColor: colors.chipInactiveBg }]}>
+            <Text style={[styles.autoplayText, { color: colors.textSecondary }]}>Tự động phát</Text>
+            <MaterialCommunityIcons name="toggle-switch" size={24} color={colors.youtubeRed} />
+          </View>
         </View>
+
+        {upNextVideos.map((video) => (
+          <UpNextVideoCard key={video.id} video={video} onPress={handleSelectNextVideo} />
+        ))}
       </ScrollView>
+
     </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  topBar: { height: 48, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 12, borderBottomWidth: StyleSheet.hairlineWidth },
-  backButton: { width: 36, height: 36, justifyContent: 'center', alignItems: 'center' },
-  screenTimeChip: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
-  screenTimeText: { fontSize: 12, fontWeight: '700' },
-  kidsLockBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 14, backgroundColor: 'rgba(100, 116, 139, 0.15)' },
-  kidsLockBtnActive: { backgroundColor: '#ef4444' },
+  topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 12, paddingVertical: 6, borderBottomWidth: StyleSheet.hairlineWidth },
+  backButton: { padding: 4 },
+  screenTimeChip: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 14, gap: 5 },
+  screenTimeText: { fontSize: 12, fontWeight: '600' },
+  kidsLockBtn: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 16, borderWidth: 1, borderColor: 'rgba(128,128,128,0.3)', gap: 4 },
+  kidsLockBtnActive: { backgroundColor: '#cc0000', borderColor: '#cc0000' },
   kidsLockText: { fontSize: 12, fontWeight: '700' },
   scrollContent: { flex: 1 },
-  scrollInner: { paddingBottom: 24 },
-  titleSection: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', paddingHorizontal: 12, paddingTop: 12 },
-  videoTitle: { fontSize: 16, fontWeight: '700', flex: 1, marginRight: 8, lineHeight: 22 },
-  metaRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, marginTop: 4, gap: 8 },
-  metaText: { fontSize: 12 },
-  safeTag: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 },
-  safeTagText: { fontSize: 11, fontWeight: '600' },
-  channelRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 12, borderBottomWidth: StyleSheet.hairlineWidth, marginTop: 8 },
-  channelAvatar: { width: 36, height: 36, borderRadius: 18, justifyContent: 'center', alignItems: 'center', marginRight: 10 },
-  channelInfo: { flex: 1 },
-  channelTitle: { fontSize: 14, fontWeight: '700' },
-  subscriberCount: { fontSize: 11 },
+  scrollInner: { paddingBottom: 28 },
+  titleSection: { paddingHorizontal: 14, paddingTop: 12, paddingBottom: 6 },
+  videoTitle: { fontSize: 16, fontWeight: '700', lineHeight: 22 },
+  videoViews: { fontSize: 12, marginTop: 4 },
+  channelRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 14, paddingVertical: 10, borderBottomWidth: StyleSheet.hairlineWidth },
+  channelLeft: { flexDirection: 'row', alignItems: 'center', flex: 1, marginRight: 10 },
+  channelAvatar: { width: 36, height: 36, borderRadius: 18, justifyContent: 'center', alignItems: 'center' },
+  channelAvatarLetter: { color: '#ffffff', fontSize: 16, fontWeight: '800' },
+  channelInfo: { marginLeft: 10, flex: 1 },
+  channelName: { fontSize: 14, fontWeight: '700' },
+  channelSubs: { fontSize: 11, marginTop: 2 },
   subscribeBtn: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 18 },
-  subscribeText: { fontSize: 13, fontWeight: '700' },
-  actionsBar: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 12, gap: 8 },
-  actionPill: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, gap: 6 },
-  actionDivider: { width: 1, height: 16, marginHorizontal: 2 },
+  subscribeBtnText: { fontSize: 13, fontWeight: '700' },
+  actionRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 10, gap: 8 },
+  actionPillGroup: { flexDirection: 'row', alignItems: 'center', borderRadius: 20, paddingHorizontal: 8, paddingVertical: 6 },
+  actionSubBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 6 },
+  actionDivider: { width: 1, height: 18, marginHorizontal: 4 },
+  actionPill: { flexDirection: 'row', alignItems: 'center', borderRadius: 20, paddingHorizontal: 12, paddingVertical: 6, gap: 6 },
   actionText: { fontSize: 12, fontWeight: '600' },
-  upNextSection: { paddingHorizontal: 12, marginTop: 8 },
-  upNextSectionTitle: { fontSize: 15, fontWeight: '700', marginBottom: 12 },
+  upNextHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 14, paddingTop: 14, paddingBottom: 6 },
+  upNextTitle: { fontSize: 15, fontWeight: '700' },
+  autoplayBadge: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 14, gap: 4 },
+  autoplayText: { fontSize: 11, fontWeight: '600' },
+
 });
-
-

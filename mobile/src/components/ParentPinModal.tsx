@@ -11,25 +11,34 @@ import {
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useAppTheme, ThemePreference } from '../context/ThemeContext';
+import { toggleParentLock } from '../services/apiClient';
 
 interface ParentPinModalProps {
   visible: boolean;
   onClose: () => void;
   onTriggerEmergencyLock?: () => void;
+  onUnlockSuccess?: () => void;
 }
 
 export const ParentPinModal: React.FC<ParentPinModalProps> = ({
   visible,
   onClose,
   onTriggerEmergencyLock,
+  onUnlockSuccess,
 }) => {
   const { colors, themePreference, setThemePreference } = useAppTheme();
   const [pin, setPin] = useState('');
   const [isUnlocked, setIsUnlocked] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
-  const handleVerifyPin = () => {
+  const handleVerifyPin = async () => {
     if (pin === '1234' || pin === '0000') {
+      if (onUnlockSuccess) {
+        await toggleParentLock(false);
+        handleClose();
+        onUnlockSuccess();
+        return;
+      }
       setIsUnlocked(true);
       setErrorMsg('');
     } else {
@@ -127,7 +136,8 @@ export const ParentPinModal: React.FC<ParentPinModalProps> = ({
               <View style={[styles.divider, { backgroundColor: colors.border }]} />
               <TouchableOpacity
                 style={[styles.outlineBtn, { borderColor: colors.youtubeRed }]}
-                onPress={() => {
+                onPress={async () => {
+                  await toggleParentLock(true);
                   handleClose();
                   onTriggerEmergencyLock?.();
                 }}
