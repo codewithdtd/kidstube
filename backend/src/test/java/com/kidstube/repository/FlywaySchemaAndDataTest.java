@@ -64,14 +64,18 @@ class FlywaySchemaAndDataTest {
     }
 
     @Test
-    @DisplayName("Flyway V2 should have seeded sample channel and curated videos")
+    @DisplayName("Flyway V2 & V3 should have seeded sample channel, curated videos and shorts")
     void shouldVerifySampleChannelAndVideos() {
         Optional<Channel> channelOpt = channelRepository.findByYoutubeChannelId("UCbCmjCuTUZos62Q4gtHW4wQ");
         assertThat(channelOpt).isPresent();
         assertThat(channelOpt.get().getTitle()).contains("CoComelon");
 
         List<Video> activeVideos = videoRepository.findByIsActiveTrueOrderByCreatedAtDesc();
-        assertThat(activeVideos).hasSize(4);
+        assertThat(activeVideos).hasSize(7);
+
+        List<Video> shorts = videoRepository.findActiveShortsWithDetails();
+        assertThat(shorts).hasSize(3);
+        assertThat(shorts).allMatch(v -> Boolean.TRUE.equals(v.getIsShort()));
 
         boolean exists = videoRepository.existsByYoutubeVideoId("WRVsOCh907o");
         assertThat(exists).isTrue();

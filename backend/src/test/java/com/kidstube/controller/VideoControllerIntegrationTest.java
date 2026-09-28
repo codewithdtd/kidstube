@@ -55,6 +55,16 @@ class VideoControllerIntegrationTest {
                 .andExpect(jsonPath("$[0].youtubeVideoId", notNullValue()))
                 .andExpect(jsonPath("$[0].isActive", is(true)));
     }
+    @Test
+    @DisplayName("GET /api/v1/videos/shorts - Trả về danh sách video Shorts cho bé")
+    void shouldReturnActiveShortsForKid() throws Exception {
+        mockMvc.perform(get("/api/v1/videos/shorts"))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$", hasSize(greaterThanOrEqualTo(1))))
+                .andExpect(jsonPath("$[0].isShort", is(true)));
+    }
+
 
     @Test
     @DisplayName("GET /api/v1/videos?categoryId=1 - Lọc video theo danh mục")

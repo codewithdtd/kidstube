@@ -33,6 +33,11 @@ public class YouTubeMetadataFetcher {
                 .defaultHeader("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) KidsTube/1.0")
                 .build();
     }
+    private final java.net.http.HttpClient shortCheckClient = java.net.http.HttpClient.newBuilder()
+            .followRedirects(java.net.http.HttpClient.Redirect.NEVER)
+            .connectTimeout(java.time.Duration.ofMillis(2500))
+            .build();
+
 
     public record OEmbedData(
             String title,
@@ -85,6 +90,34 @@ public class YouTubeMetadataFetcher {
                     "https://i.ytimg.com/vi/" + videoId + "/hqdefault.jpg",
                     0
             );
+        }
+    }
+
+
+    /**
+     * Check if a video is a YouTube Short.
+     * YouTube redirects regular long videos from /shorts/{id} to /watch?v={id} (HTTP 303/302).
+     * Only true YouTube Shorts return HTTP 200 OK.
+     */
+    public boolean checkIfShort(String videoId) {
+        if (videoId == null || videoId.isBlank()) {
+            return false;
+        }
+        try {
+            java.net.http.HttpRequest req = java.net.http.HttpRequest.newBuilder()
+                    .uri(java.net.URI.create("https://www.youtube.com/shorts/" + videoId))
+                    .method("HEAD", java.net.http.HttpRequest.BodyPublishers.noBody())
+                    .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
+                    .timeout(java.time.Duration.ofMillis(2500))
+                    .build();
+
+            java.net.http.HttpResponse<Void> resp = shortCheckClient.send(req, java.net.http.HttpResponse.BodyHandlers.discarding());
+            boolean isShort = resp.statusCode() == 200;
+            log.info("Video {} short check returned HTTP {}: isShort={}", videoId, resp.statusCode(), isShort);
+            return isShort;
+        } catch (Exception ex) {
+            log.warn("Could not determine if video {} is a short via HEAD request: {}", videoId, ex.getMessage());
+            return false;
         }
     }
 

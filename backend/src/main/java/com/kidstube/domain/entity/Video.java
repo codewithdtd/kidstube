@@ -44,6 +44,9 @@ public class Video {
     @Column(name = "is_active")
     private Boolean isActive;
 
+    @Column(name = "is_short")
+    private Boolean isShort = false;
+
     @Column(name = "created_at", columnDefinition = "TIMESTAMP WITH TIME ZONE")
     private OffsetDateTime createdAt;
 
@@ -52,6 +55,11 @@ public class Video {
 
     public Video(Long id, String youtubeVideoId, String title, String thumbnailUrl, Integer durationSeconds,
                  Category category, Channel channel, Boolean isActive, OffsetDateTime createdAt) {
+        this(id, youtubeVideoId, title, thumbnailUrl, durationSeconds, category, channel, isActive, createdAt, false);
+    }
+
+    public Video(Long id, String youtubeVideoId, String title, String thumbnailUrl, Integer durationSeconds,
+                 Category category, Channel channel, Boolean isActive, OffsetDateTime createdAt, Boolean isShort) {
         this.id = id;
         this.youtubeVideoId = youtubeVideoId;
         this.title = title;
@@ -61,6 +69,7 @@ public class Video {
         this.channel = channel;
         this.isActive = isActive;
         this.createdAt = createdAt;
+        this.isShort = isShort != null ? isShort : false;
     }
 
     public Long getId() {
@@ -127,6 +136,14 @@ public class Video {
         this.isActive = isActive;
     }
 
+    public Boolean getIsShort() {
+        return isShort;
+    }
+
+    public void setIsShort(Boolean isShort) {
+        this.isShort = isShort != null ? isShort : false;
+    }
+
     public OffsetDateTime getCreatedAt() {
         return createdAt;
     }
@@ -148,6 +165,7 @@ public class Video {
         private Category category;
         private Channel channel;
         private Boolean isActive;
+        private Boolean isShort = false;
         private OffsetDateTime createdAt;
 
         public Builder id(Long id) {
@@ -190,13 +208,18 @@ public class Video {
             return this;
         }
 
+        public Builder isShort(Boolean isShort) {
+            this.isShort = isShort;
+            return this;
+        }
+
         public Builder createdAt(OffsetDateTime createdAt) {
             this.createdAt = createdAt;
             return this;
         }
 
         public Video build() {
-            return new Video(id, youtubeVideoId, title, thumbnailUrl, durationSeconds, category, channel, isActive, createdAt);
+            return new Video(id, youtubeVideoId, title, thumbnailUrl, durationSeconds, category, channel, isActive, createdAt, isShort);
         }
     }
 

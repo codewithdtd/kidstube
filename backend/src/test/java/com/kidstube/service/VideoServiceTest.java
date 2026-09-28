@@ -12,6 +12,8 @@ import com.kidstube.repository.CategoryRepository;
 import com.kidstube.repository.ChannelRepository;
 import com.kidstube.repository.VideoRepository;
 import com.kidstube.service.youtube.YouTubeMetadataFetcher;
+import com.kidstube.service.youtube.YouTubeChannelFeed;
+
 import com.kidstube.service.youtube.YouTubeParsedUrl;
 import com.kidstube.service.youtube.YouTubeUrlParser;
 import com.kidstube.service.youtube.YouTubeVideoMetadata;
@@ -238,5 +240,58 @@ class VideoServiceTest {
 
         verify(videoRepository).deleteById(1L);
     }
+    @Test
+    @DisplayName("Nên chỉ lưu video Shorts khi tùy chọn shortsOnly là true")
+    void shouldImportOnlyShortsWhenShortsOnlyIsTrue() {
+        ImportVideoRequest request = new ImportVideoRequest("https://www.youtube.com/@CoComelon", 1L, true);
+
+        when(categoryRepository.findById(1L)).thenReturn(Optional.of(sampleCategory));
+        when(urlParser.parse(request.url())).thenReturn(
+                new YouTubeParsedUrl(YouTubeParsedUrl.ParsedType.CHANNEL_HANDLE, "CoComelon")
+        );
+
+        YouTubeVideoMetadata longVideo = new YouTubeVideoMetadata("longVid12345", "Bé Học Chữ Cái", "CoComelon", "", "thumb1.jpg", 300);
+        YouTubeVideoMetadata shortVideo = new YouTubeVideoMetadata("shortVid1234", "Bé Nhảy Vui Cùng Khủng Long", "CoComelon", "", "thumb2.jpg", 30);
+        YouTubeChannelFeed feed = new YouTubeChannelFeed("UC_channel", "CoComelon", "https://youtube.com/@CoComelon", List.of(longVideo, shortVideo));
+
+        when(metadataFetcher.fetchChannelFeed(any())).thenReturn(feed);
+        when(metadataFetcher.checkIfShort("longVid12345")).thenReturn(false);
+        when(metadataFetcher.checkIfShort("shortVid1234")).thenReturn(true);
+        when(channelRepository.findByYoutubeChannelId(any())).thenReturn(Optional.of(sampleChannel));
+        when(videoRepository.findByYoutubeVideoId(any())).thenReturn(Optional.empty());
+        when(videoRepository.save(any(Video.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        ImportResultResponse response = videoService.importFromUrl(request);
+
+        assertThat(response.importType()).isEqualTo("CHANNEL");
+        // Chỉ lưu video short, bỏ qua long video
+        assertThat(response.importedCount()).isEqualTo(1);
+        assertThat(response.videos()).hasSize(1);
+        assertThat(response.videos().get(0).youtubeVideoId()).isEqualTo("shortVid1234");
+        assertThat(response.videos().get(0).isShort()).isTrue();
+    }
+
+    @Test
+    @DisplayName("Nên lấy danh sách video Shorts cho bé")
+    void shouldGetShortsForKid() {
+        Video shortVideo = Video.builder()
+                .id(1L)
+                .youtubeVideoId("short1234567")
+                .title("Short vui nhộn")
+                .category(sampleCategory)
+                .channel(sampleChannel)
+                .isActive(true)
+                .isShort(true)
+                .build();
+
+        when(videoRepository.findActiveShortsWithDetails()).thenReturn(List.of(shortVideo));
+
+        List<VideoResponse> result = videoService.getShortsForKid();
+
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).isShort()).isTrue();
+        assertThat(result.get(0).title()).isEqualTo("Short vui nhộn");
+    }
+
 
 }

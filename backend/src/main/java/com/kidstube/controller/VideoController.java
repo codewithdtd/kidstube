@@ -31,5 +31,11 @@ public class VideoController {
     ) {
         return ResponseEntity.ok(videoService.getVideosForKid(categoryId));
     }
+    @GetMapping("/shorts")
+    @Operation(summary = "Get shorts video feed for kid", description = "Returns active shorts videos for vertical player")
+    public ResponseEntity<List<VideoResponse>> getShortsForKid() {
+        return ResponseEntity.ok(videoService.getShortsForKid());
+    }
+
 }
 

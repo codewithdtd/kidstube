@@ -10,6 +10,14 @@ public record ImportVideoRequest(
         String url,
 
         @Schema(description = "ID danh mục (tùy chọn - nếu bỏ trống hệ thống sẽ tự động gán danh mục ngẫu nhiên)", example = "1", nullable = true)
-        Long categoryId
-) {}
+        Long categoryId,
+
+        @Schema(description = "Chỉ nạp video ngắn Shorts (khi nạp theo kênh)", example = "true", nullable = true)
+        Boolean shortsOnly
+) {
+    public ImportVideoRequest(String url, Long categoryId) {
+        this(url, categoryId, false);
+    }
+}
+
 

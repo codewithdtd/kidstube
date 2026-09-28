@@ -118,7 +118,7 @@ function clearVideoSearch() {
 
 function filterByStatus(status) {
   statusFilter = status;
-  ['ALL', 'ACTIVE', 'INACTIVE'].forEach(s => {
+  ['ALL', 'SHORTS', 'ACTIVE', 'INACTIVE'].forEach(s => {
     const btn = document.getElementById(`filter-status-${s.toLowerCase()}`);
     if (btn) {
       if (s === status) {
@@ -139,7 +139,8 @@ function resetAllFilters() {
 
 function getFilteredVideos() {
   return allVideos.filter(video => {
-    // 1. Status filter
+    // 1. Status & Type filter
+    if (statusFilter === 'SHORTS' && !video.isShort) return false;
     if (statusFilter === 'ACTIVE' && !video.isActive) return false;
     if (statusFilter === 'INACTIVE' && video.isActive) return false;
 
@@ -227,9 +228,12 @@ function renderVideos() {
           <span class="absolute bottom-2 right-2 px-2 py-0.5 rounded bg-black/75 text-white text-[11px] font-medium pointer-events-none">
             ${formatSeconds(video.durationSeconds)}
           </span>
-          <span class="absolute top-2 left-2 px-2 py-0.5 rounded-full text-[10px] font-bold ${video.isActive ? 'bg-emerald-500 text-white' : 'bg-slate-700 text-slate-200'} pointer-events-none">
-            ${video.isActive ? '🟢 Đang mở' : '⚪ Đang ẩn'}
-          </span>
+          <div class="absolute top-2 left-2 flex items-center gap-1.5 pointer-events-none">
+            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${video.isActive ? 'bg-emerald-500 text-white' : 'bg-slate-700 text-slate-200'}">
+              ${video.isActive ? '🟢 Đang mở' : '⚪ Đang ẩn'}
+            </span>
+            ${video.isShort ? '<span class="px-1.5 py-0.5 rounded-md text-[10px] font-extrabold bg-rose-600 text-white shadow-sm flex items-center gap-0.5"><i data-lucide="zap" class="w-2.5 h-2.5"></i>Shorts</span>' : ''}
+          </div>
         </div>
         <div class="p-4 space-y-1.5">
           <div class="flex items-center justify-between text-[11px]">
@@ -312,8 +316,10 @@ async function confirmDeleteVideo() {
 async function handleImportVideo(e) {
   e.preventDefault();
   const urlInput = document.getElementById('import-url');
+  const shortsOnlyInput = document.getElementById('import-shorts-only');
   const btn = document.getElementById('btn-import-submit');
   const url = urlInput.value.trim();
+  const shortsOnly = shortsOnlyInput ? shortsOnlyInput.checked : false;
 
   // Tự động chọn danh mục ngẫu nhiên để ba mẹ không cần thao tác phức tạp
   const randomCategory = (categories && categories.length > 0)
@@ -328,12 +334,13 @@ async function handleImportVideo(e) {
     const res = await fetch('/api/v1/parent/videos/import', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ url, categoryId: randomCategory })
+      body: JSON.stringify({ url, categoryId: randomCategory, shortsOnly })
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.detail || data.message || 'Không thể nạp video');
     showToast(data.message || `Đã nạp thành công ${data.importedCount} video!`);
     urlInput.value = '';
+    if (shortsOnlyInput) shortsOnlyInput.checked = false;
     loadVideos();
   } catch (err) {
     showToast(err.message, 'error');

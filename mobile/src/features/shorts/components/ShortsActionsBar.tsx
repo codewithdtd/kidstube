@@ -5,6 +5,10 @@ import { ShortVideo } from '../../../types/models';
 
 interface ShortsActionsBarProps {
   short: ShortVideo;
+  isPlaying: boolean;
+  onTogglePlay: () => void;
+  isMuted: boolean;
+  onToggleMute: () => void;
   isKidsLocked: boolean;
   onToggleKidsLock: () => void;
   onShare?: () => void;
@@ -12,6 +16,10 @@ interface ShortsActionsBarProps {
 
 export const ShortsActionsBar: React.FC<ShortsActionsBarProps> = ({
   short,
+  isPlaying,
+  onTogglePlay,
+  isMuted,
+  onToggleMute,
   isKidsLocked,
   onToggleKidsLock,
   onShare,
@@ -51,7 +59,39 @@ export const ShortsActionsBar: React.FC<ShortsActionsBarProps> = ({
 
   return (
     <View style={styles.container}>
-      {/* 1. Like Button */}
+      {/* 0. Play / Pause Control Button */}
+      <TouchableOpacity
+        style={styles.actionBtn}
+        activeOpacity={0.7}
+        onPress={onTogglePlay}
+      >
+        <View style={[styles.iconCircle, isPlaying ? styles.iconCircle : styles.pausedCircle]}>
+          <MaterialCommunityIcons
+            name={isPlaying ? 'pause' : 'play'}
+            size={28}
+            color="#ffffff"
+          />
+        </View>
+        <Text style={styles.actionLabel}>{isPlaying ? 'Tạm dừng' : 'Phát'}</Text>
+      </TouchableOpacity>
+
+      {/* 1. Mute / Unmute Audio Toggle */}
+      <TouchableOpacity
+        style={styles.actionBtn}
+        activeOpacity={0.7}
+        onPress={onToggleMute}
+      >
+        <View style={[styles.iconCircle, isMuted ? styles.mutedCircle : styles.iconCircle]}>
+          <MaterialCommunityIcons
+            name={isMuted ? 'volume-off' : 'volume-high'}
+            size={26}
+            color={isMuted ? '#f59e0b' : '#ffffff'}
+          />
+        </View>
+        <Text style={styles.actionLabel}>{isMuted ? 'Bật tiếng' : 'Tắt tiếng'}</Text>
+      </TouchableOpacity>
+
+      {/* 2. Like Button */}
       <TouchableOpacity
         style={styles.actionBtn}
         activeOpacity={0.7}
@@ -67,7 +107,7 @@ export const ShortsActionsBar: React.FC<ShortsActionsBarProps> = ({
         <Text style={styles.actionLabel}>{formatCount(likeCount)}</Text>
       </TouchableOpacity>
 
-      {/* 2. Dislike Button */}
+      {/* 3. Dislike Button */}
       <TouchableOpacity
         style={styles.actionBtn}
         activeOpacity={0.7}
@@ -83,7 +123,7 @@ export const ShortsActionsBar: React.FC<ShortsActionsBarProps> = ({
         <Text style={styles.actionLabel}>Không thích</Text>
       </TouchableOpacity>
 
-      {/* 3. Kids Touch Lock Button */}
+      {/* 4. Kids Touch Lock Button */}
       <TouchableOpacity
         style={styles.actionBtn}
         activeOpacity={0.7}
@@ -99,7 +139,7 @@ export const ShortsActionsBar: React.FC<ShortsActionsBarProps> = ({
         <Text style={styles.actionLabel}>{isKidsLocked ? 'Đã khóa' : 'Khóa chạm'}</Text>
       </TouchableOpacity>
 
-      {/* 4. Share Button */}
+      {/* 5. Share Button */}
       <TouchableOpacity
         style={styles.actionBtn}
         activeOpacity={0.7}
@@ -111,7 +151,7 @@ export const ShortsActionsBar: React.FC<ShortsActionsBarProps> = ({
         <Text style={styles.actionLabel}>Chia sẻ</Text>
       </TouchableOpacity>
 
-      {/* 5. Music Disc Avatar */}
+      {/* 6. Music Disc Avatar */}
       <View style={styles.discContainer}>
         <View style={styles.discOuter}>
           <MaterialCommunityIcons name="music-note" size={18} color="#ffffff" />
@@ -152,9 +192,16 @@ const styles = StyleSheet.create({
   likedCircle: {
     backgroundColor: 'rgba(239, 68, 68, 0.25)',
   },
+  pausedCircle: {
+    backgroundColor: '#ef4444',
+  },
   lockedCircle: {
     backgroundColor: 'rgba(245, 158, 11, 0.3)',
   },
+  mutedCircle: {
+    backgroundColor: 'rgba(245, 158, 11, 0.4)',
+  },
+
   actionLabel: {
     color: '#ffffff',
     fontSize: 11,

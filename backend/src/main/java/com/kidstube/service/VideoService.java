@@ -71,13 +71,16 @@ public class VideoService {
 
     public ImportResultResponse importFromUrl(ImportVideoRequest request) {
         Category category = resolveCategory(request.categoryId());
+        boolean isShortsOnly = Boolean.TRUE.equals(request.shortsOnly())
+                || (request.url() != null && request.url().contains("/shorts"));
 
         YouTubeParsedUrl parsedUrl = urlParser.parse(request.url());
 
         if (parsedUrl.type() == YouTubeParsedUrl.ParsedType.SINGLE_VIDEO) {
-            return importSingleVideo(parsedUrl.identifier(), category);
+            boolean isUrlShort = request.url() != null && request.url().contains("/shorts");
+            return importSingleVideo(parsedUrl.identifier(), category, isUrlShort);
         } else {
-            return importChannel(parsedUrl, category);
+            return importChannel(parsedUrl, category, isShortsOnly);
         }
     }
 
@@ -101,12 +104,14 @@ public class VideoService {
         return chosen;
     }
 
-    private ImportResultResponse importSingleVideo(String videoId, Category category) {
+    private ImportResultResponse importSingleVideo(String videoId, Category category, boolean isUrlShort) {
+        boolean isShort = isUrlShort || metadataFetcher.checkIfShort(videoId);
         var existingOpt = videoRepository.findByYoutubeVideoId(videoId);
         if (existingOpt.isPresent()) {
             Video existing = existingOpt.get();
             existing.setCategory(category);
             existing.setIsActive(true);
+            existing.setIsShort(isShort);
             Video saved = videoRepository.save(existing);
             return new ImportResultResponse(
                     "SINGLE_VIDEO",
@@ -118,6 +123,9 @@ public class VideoService {
         }
 
         YouTubeVideoMetadata meta = metadataFetcher.fetchVideoMetadata(videoId);
+        if (!isShort && meta.title() != null && meta.title().toLowerCase().contains("#shorts")) {
+            isShort = true;
+        }
 
         Channel channel = getOrCreateChannel(
                 "creator_" + videoId,
@@ -134,21 +142,22 @@ public class VideoService {
                 .category(category)
                 .channel(channel)
                 .isActive(true)
+                .isShort(isShort)
                 .build();
 
         Video saved = videoRepository.save(video);
-        log.info("Successfully imported video {} ({})", saved.getYoutubeVideoId(), saved.getTitle());
+        log.info("Successfully imported video {} ({}, isShort={})", saved.getYoutubeVideoId(), saved.getTitle(), saved.getIsShort());
 
         return new ImportResultResponse(
                 "SINGLE_VIDEO",
                 channel.getTitle(),
                 1,
                 List.of(mapToResponse(saved)),
-                "Đã thêm 1 video thành công!"
+                "Đã thêm 1 " + (isShort ? "video Shorts " : "video ") + "thành công!"
         );
     }
 
-    private ImportResultResponse importChannel(YouTubeParsedUrl parsedUrl, Category category) {
+    private ImportResultResponse importChannel(YouTubeParsedUrl parsedUrl, Category category, boolean shortsOnly) {
         YouTubeChannelFeed feed = metadataFetcher.fetchChannelFeed(parsedUrl);
 
         Channel channel = getOrCreateChannel(
@@ -160,11 +169,20 @@ public class VideoService {
 
         List<Video> savedVideos = new ArrayList<>();
         for (YouTubeVideoMetadata meta : feed.videos()) {
+            boolean isShort = (meta.title() != null && meta.title().toLowerCase().contains("#shorts"))
+                    || metadataFetcher.checkIfShort(meta.videoId());
+
+            if (shortsOnly && !isShort) {
+                log.debug("Skipping non-short video {} because shortsOnly=true", meta.videoId());
+                continue;
+            }
+
             var existingOpt = videoRepository.findByYoutubeVideoId(meta.videoId());
             if (existingOpt.isPresent()) {
                 Video existing = existingOpt.get();
                 existing.setCategory(category);
                 existing.setIsActive(true);
+                existing.setIsShort(isShort);
                 savedVideos.add(videoRepository.save(existing));
             } else {
                 Video video = Video.builder()
@@ -175,19 +193,24 @@ public class VideoService {
                         .category(category)
                         .channel(channel)
                         .isActive(true)
+                        .isShort(isShort)
                         .build();
                 savedVideos.add(videoRepository.save(video));
             }
         }
 
-        log.info("Batch imported {} videos for channel '{}'", savedVideos.size(), feed.channelTitle());
+        log.info("Batch imported {} videos for channel '{}' (shortsOnly={})", savedVideos.size(), feed.channelTitle(), shortsOnly);
+
+        String message = savedVideos.isEmpty() && shortsOnly
+                ? "Kênh '" + feed.channelTitle() + "' không có video Shorts nào trong các video gần đây."
+                : "Đã đồng bộ " + savedVideos.size() + (shortsOnly ? " video Shorts" : " video") + " từ kênh " + feed.channelTitle() + " thành công!";
 
         return new ImportResultResponse(
                 "CHANNEL",
                 feed.channelTitle(),
                 savedVideos.size(),
                 savedVideos.stream().map(this::mapToResponse).toList(),
-                "Đã đồng bộ " + savedVideos.size() + " video từ kênh " + feed.channelTitle() + " thành công!"
+                message
         );
     }
 
@@ -217,6 +240,20 @@ public class VideoService {
         log.info("Deleted video ID: {}", id);
     }
 
+    @Transactional(readOnly = true)
+    public List<VideoResponse> getShortsForKid() {
+        try {
+            List<Video> shorts = videoRepository.findActiveShortsWithDetails();
+            if (shorts.isEmpty()) {
+                shorts = videoRepository.findActiveVideosWithDetails();
+            }
+            return shorts.stream().map(this::mapToResponse).toList();
+        } catch (Exception ex) {
+            log.warn("Could not query active shorts, falling back to active videos: {}", ex.getMessage());
+            return videoRepository.findActiveVideosWithDetails().stream().map(this::mapToResponse).toList();
+        }
+    }
+
     private Channel getOrCreateChannel(String channelId, String title, String customUrl, String thumbnailUrl) {
         return channelRepository.findByYoutubeChannelId(channelId)
                 .orElseGet(() -> channelRepository.save(
@@ -240,7 +277,8 @@ public class VideoService {
                 video.getCategory() != null ? video.getCategory().getName() : null,
                 video.getChannel() != null ? video.getChannel().getTitle() : null,
                 video.getIsActive(),
-                video.getCreatedAt()
+                video.getCreatedAt(),
+                Boolean.TRUE.equals(video.getIsShort())
         );
     }
 

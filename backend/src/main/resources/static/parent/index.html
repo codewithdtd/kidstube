@@ -107,6 +107,13 @@
               </button>
             </div>
           </div>
+          <div class="flex items-center space-x-2 pt-1">
+            <input type="checkbox" id="import-shorts-only" class="w-4 h-4 rounded text-rose-600 focus:ring-rose-500 border-slate-300">
+            <label for="import-shorts-only" class="text-xs font-medium text-slate-700 cursor-pointer flex items-center gap-1.5 select-none">
+              <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-rose-100 text-rose-700">SHORTS</span>
+              <span>Chỉ lấy video Shorts (video ngắn dọc dưới 60s) khi nạp theo link kênh</span>
+            </label>
+          </div>
           <div class="flex items-center justify-between text-xs text-slate-500 pt-1">
             <span class="flex items-center space-x-1.5"><i data-lucide="sparkles" class="w-4 h-4 text-amber-500"></i><span>Hỗ trợ cả link 1 video đơn hoặc toàn bộ @kênh. Danh mục được gán ngẫu nhiên tự động.</span></span>
           </div>
@@ -140,6 +147,7 @@
           <!-- Status Filter Buttons -->
           <div class="flex items-center space-x-1 bg-slate-100 p-1 rounded-xl shrink-0 text-xs font-semibold">
             <button onclick="filterByStatus('ALL')" id="filter-status-all" class="px-3 py-1.5 rounded-lg bg-white shadow-sm text-slate-900 transition">Tất cả</button>
+            <button onclick="filterByStatus('SHORTS')" id="filter-status-shorts" class="px-3 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 transition">⚡ Shorts</button>
             <button onclick="filterByStatus('ACTIVE')" id="filter-status-active" class="px-3 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 transition">🟢 Đang mở</button>
             <button onclick="filterByStatus('INACTIVE')" id="filter-status-inactive" class="px-3 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 transition">⚪ Đã ẩn</button>
           </div>

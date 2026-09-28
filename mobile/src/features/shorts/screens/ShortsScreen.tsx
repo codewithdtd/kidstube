@@ -8,27 +8,66 @@ import {
   StatusBar,
   TouchableOpacity,
   ViewToken,
+  Platform,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { ShortsScreenProps } from '../../../types/navigation';
+import { ShortVideo } from '../../../types/models';
 import { MOCK_SHORTS } from '../data/mockShorts';
 import { ShortsVideoItem } from '../components/ShortsVideoItem';
 import { YouTubeBottomBar } from '../../../components/YouTubeBottomBar';
-import { fetchAppStatus, recordWatchHistory } from '../../../services/apiClient';
+import { fetchAppStatus, fetchShorts, recordWatchHistory } from '../../../services/apiClient';
 
 export const ShortsScreen: React.FC<ShortsScreenProps> = ({ navigation }) => {
   const { width: windowWidth, height: windowHeight } = useWindowDimensions();
   const insets = useSafeAreaInsets();
 
   const bottomBarHeight = 52 + Math.max(insets.bottom, 10);
-  const itemHeight = windowHeight - bottomBarHeight;
+  const itemHeight = Math.max(windowHeight - bottomBarHeight, 500);
 
+  // On wide screens (Desktop Web), constrain to vertical 9:16 phone ratio centered; on mobile use 100% width
+  const isDesktop = windowWidth > 500;
+  const contentWidth = isDesktop
+    ? Math.min(windowWidth, Math.round((itemHeight * 9) / 16), 480)
+    : windowWidth;
+
+  const [shorts, setShorts] = useState<ShortVideo[]>(MOCK_SHORTS);
   const [activeIndex, setActiveIndex] = useState<number>(0);
   const [remainingSeconds, setRemainingSeconds] = useState<number>(1800);
 
+  const flatListRef = useRef<FlatList<ShortVideo>>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const watchedSecondsRef = useRef<number>(0);
+
+  const handleScrollToNext = () => {
+    if (activeIndex < shorts.length - 1) {
+      const next = activeIndex + 1;
+      setActiveIndex(next);
+      flatListRef.current?.scrollToIndex({ index: next, animated: true });
+    }
+  };
+
+  const handleScrollToPrev = () => {
+    if (activeIndex > 0) {
+      const prev = activeIndex - 1;
+      setActiveIndex(prev);
+      flatListRef.current?.scrollToIndex({ index: prev, animated: true });
+    }
+  };
+
+  // Load real shorts feed from backend
+  useEffect(() => {
+    let isMounted = true;
+    fetchShorts().then((data) => {
+      if (isMounted && data && data.length > 0) {
+        setShorts(data);
+      }
+    });
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   // Sync screen time limit from backend on mount
   useEffect(() => {
@@ -47,7 +86,8 @@ export const ShortsScreen: React.FC<ShortsScreenProps> = ({ navigation }) => {
   useEffect(() => {
     timerRef.current = setInterval(() => {
       watchedSecondsRef.current += 1;
-      const currentShort = MOCK_SHORTS[activeIndex] || MOCK_SHORTS[0];
+      const currentShort = shorts[activeIndex] || shorts[0];
+      if (!currentShort) return;
 
       if (watchedSecondsRef.current >= 30) {
         recordWatchHistory(currentShort.id, watchedSecondsRef.current);
@@ -73,7 +113,7 @@ export const ShortsScreen: React.FC<ShortsScreenProps> = ({ navigation }) => {
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
-  }, [activeIndex, navigation]);
+  }, [activeIndex, shorts, navigation]);
 
   // Track active visible Short item
   const onViewableItemsChanged = useRef(
@@ -87,6 +127,13 @@ export const ShortsScreen: React.FC<ShortsScreenProps> = ({ navigation }) => {
   const viewabilityConfig = useRef({
     itemVisiblePercentThreshold: 60,
   }).current;
+
+  const handleScrollSync = (offsetY: number) => {
+    const newIndex = Math.round(offsetY / itemHeight);
+    if (newIndex >= 0 && newIndex < shorts.length && newIndex !== activeIndex) {
+      setActiveIndex(newIndex);
+    }
+  };
 
   const remainingMinutes = Math.floor(remainingSeconds / 60);
 
@@ -110,13 +157,16 @@ export const ShortsScreen: React.FC<ShortsScreenProps> = ({ navigation }) => {
 
       {/* Vertical Paging Shorts List */}
       <FlatList
-        data={MOCK_SHORTS}
-        keyExtractor={(item) => item.id.toString()}
+        ref={flatListRef}
+        data={shorts}
+        keyExtractor={(item) => item.id.toString() + '_' + item.youtubeVideoId}
         pagingEnabled
+        style={styles.flatList}
         snapToInterval={itemHeight}
         snapToAlignment="start"
         decelerationRate="fast"
         showsVerticalScrollIndicator={false}
+        contentContainerStyle={isDesktop ? styles.desktopCenterList : undefined}
         getItemLayout={(_, index) => ({
           length: itemHeight,
           offset: itemHeight * index,
@@ -124,15 +174,44 @@ export const ShortsScreen: React.FC<ShortsScreenProps> = ({ navigation }) => {
         })}
         onViewableItemsChanged={onViewableItemsChanged}
         viewabilityConfig={viewabilityConfig}
+        onMomentumScrollEnd={(e) => handleScrollSync(e.nativeEvent.contentOffset.y)}
+        onScroll={(e) => {
+          if (Platform.OS === 'web') {
+            handleScrollSync(e.nativeEvent.contentOffset.y);
+          }
+        }}
+        scrollEventThrottle={16}
         renderItem={({ item, index }) => (
           <ShortsVideoItem
             short={item}
             isActive={index === activeIndex}
             itemHeight={itemHeight}
-            itemWidth={windowWidth}
+            itemWidth={contentWidth}
           />
         )}
       />
+
+      {/* Floating Quick Navigation Chevrons */}
+      <View style={styles.navControls} pointerEvents="box-none">
+        {activeIndex > 0 && (
+          <TouchableOpacity
+            style={styles.navBtn}
+            activeOpacity={0.8}
+            onPress={handleScrollToPrev}
+          >
+            <MaterialCommunityIcons name="chevron-up" size={26} color="#ffffff" />
+          </TouchableOpacity>
+        )}
+        {activeIndex < shorts.length - 1 && (
+          <TouchableOpacity
+            style={styles.navBtn}
+            activeOpacity={0.8}
+            onPress={handleScrollToNext}
+          >
+            <MaterialCommunityIcons name="chevron-down" size={26} color="#ffffff" />
+          </TouchableOpacity>
+        )}
+      </View>
 
       {/* Bottom Navigation Bar */}
       <YouTubeBottomBar
@@ -149,6 +228,10 @@ export const ShortsScreen: React.FC<ShortsScreenProps> = ({ navigation }) => {
 
 const styles = StyleSheet.create({
   container: {
+    flex: 1,
+    backgroundColor: '#000000',
+  },
+  flatList: {
     flex: 1,
     backgroundColor: '#000000',
   },
@@ -201,6 +284,31 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.4)',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  navControls: {
+    position: 'absolute',
+    left: 14,
+    top: '42%',
+    zIndex: 35,
+    gap: 12,
+  },
+  navBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: 'rgba(0, 0, 0, 0.55)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.25)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.35,
+    shadowRadius: 3,
+    elevation: 4,
+  },
+  desktopCenterList: {
+    alignItems: 'center',
   },
 });
 

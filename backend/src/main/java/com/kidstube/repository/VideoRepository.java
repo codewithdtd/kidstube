@@ -21,6 +21,9 @@ public interface VideoRepository extends JpaRepository<Video, Long> {
 
     @Query("SELECT v FROM Video v LEFT JOIN FETCH v.category LEFT JOIN FETCH v.channel WHERE v.category.id = :categoryId AND v.isActive = true ORDER BY v.createdAt DESC")
     List<Video> findActiveVideosByCategoryIdWithDetails(@Param("categoryId") Long categoryId);
+    @Query("SELECT v FROM Video v LEFT JOIN FETCH v.category LEFT JOIN FETCH v.channel WHERE v.isShort = true AND v.isActive = true ORDER BY v.createdAt DESC")
+    List<Video> findActiveShortsWithDetails();
+
 
     @Query("SELECT v FROM Video v LEFT JOIN FETCH v.category LEFT JOIN FETCH v.channel ORDER BY v.createdAt DESC")
     List<Video> findAllVideosWithDetails();
