@@ -349,11 +349,12 @@ async function loadSettings() {
     const res = await fetch('/api/v1/parent/settings');
     if (!res.ok) return;
     const s = await res.json();
-    document.getElementById('input-daily-limit').value = s.dailyLimitMinutes;
-    updateLimitDisplay(s.dailyLimitMinutes);
+    const limit = s.dailyLimitMinutes ?? s.dailyTimeLimitMinutes ?? 45;
+    document.getElementById('input-daily-limit').value = limit;
+    updateLimitDisplay(limit);
     document.getElementById('input-bedtime-start').value = s.bedtimeStart;
     document.getElementById('input-bedtime-end').value = s.bedtimeEnd;
-    document.getElementById('input-is-locked').checked = s.isLocked;
+    document.getElementById('input-is-locked').checked = Boolean(s.isLocked);
   } catch (err) {
     console.error(err);
   }
@@ -402,7 +403,7 @@ async function toggleLockApi(isLocked) {
 
 async function handleSaveSettings(e) {
   e.preventDefault();
-  const dailyLimitMinutes = parseInt(document.getElementById('input-daily-limit').value, 10);
+  const dailyTimeLimitMinutes = parseInt(document.getElementById('input-daily-limit').value, 10);
   const bedtimeStart = document.getElementById('input-bedtime-start').value;
   const bedtimeEnd = document.getElementById('input-bedtime-end').value;
   const isLocked = document.getElementById('input-is-locked').checked;
@@ -410,14 +411,26 @@ async function handleSaveSettings(e) {
   btn.disabled = true;
 
   try {
+    const payload = {
+      dailyTimeLimitMinutes: isNaN(dailyTimeLimitMinutes) ? 45 : dailyTimeLimitMinutes,
+      dailyLimitMinutes: isNaN(dailyTimeLimitMinutes) ? 45 : dailyTimeLimitMinutes,
+      bedtimeStart,
+      bedtimeEnd,
+      isLocked
+    };
     const res = await fetch('/api/v1/parent/settings', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ dailyLimitMinutes, bedtimeStart, bedtimeEnd, isLocked })
+      body: JSON.stringify(payload)
     });
-    if (!res.ok) throw new Error('Không thể lưu cấu hình');
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      const errorMsg = data.detail || (data.validationErrors ? Object.values(data.validationErrors).join(', ') : 'Không thể lưu cấu hình');
+      throw new Error(errorMsg);
+    }
     showToast('Đã lưu cấu hình cài đặt thành công!');
-    loadAppStatus();
+    await loadSettings();
+    await loadAppStatus();
   } catch (err) {
     showToast(err.message, 'error');
   } finally {
@@ -435,10 +448,15 @@ async function loadAppStatus() {
     const dot = document.getElementById('header-status-dot');
     const text = document.getElementById('header-status-text');
 
-    const usedMin = Math.round(s.usedSecondsToday / 60);
-    const limitMin = Math.round(s.dailyLimitSeconds / 60);
-    const remainMin = Math.max(0, Math.round(s.remainingSeconds / 60));
-    const percent = Math.min(100, Math.round((s.usedSecondsToday / Math.max(1, s.dailyLimitSeconds)) * 100));
+    const usedSeconds = s.todayUsedSeconds ?? s.usedSecondsToday ?? 0;
+    const dailyLimitMinutes = s.dailyLimitMinutes ?? Math.round((s.dailyLimitSeconds || 0) / 60) ?? 45;
+    const dailyLimitSeconds = dailyLimitMinutes * 60;
+    const remainingSeconds = s.remainingSeconds ?? Math.max(0, dailyLimitSeconds - usedSeconds);
+
+    const usedMin = Math.round(usedSeconds / 60);
+    const limitMin = dailyLimitMinutes;
+    const remainMin = Math.max(0, Math.round(remainingSeconds / 60));
+    const percent = Math.min(100, Math.round((usedSeconds / Math.max(1, dailyLimitSeconds)) * 100));
 
     document.getElementById('metric-used-time').textContent = usedMin;
     document.getElementById('metric-limit-time').textContent = limitMin;
@@ -451,7 +469,9 @@ async function loadAppStatus() {
     const mTitle = document.getElementById('metric-status-title');
     const mDesc = document.getElementById('metric-status-desc');
 
-    if (s.canWatch) {
+    const isAllowed = (s.isAllowed !== undefined) ? s.isAllowed : (s.canWatch !== undefined ? s.canWatch : true);
+
+    if (isAllowed) {
       dot.className = 'w-2 h-2 rounded-full bg-emerald-500 animate-pulse';
       text.textContent = 'Được xem';
       pill.className = 'hidden sm:flex items-center space-x-2 px-3 py-1.5 rounded-full bg-emerald-50 text-xs font-semibold text-emerald-700 border border-emerald-200';
@@ -460,7 +480,7 @@ async function loadAppStatus() {
     } else {
       let rText = 'Đã khóa';
       let rDesc = 'Ứng dụng đang bị khóa';
-      if (s.lockReason === 'BEDTIME') {
+      if (s.lockReason === 'BEDTIME' || s.isBedtime) {
         rText = 'Giờ ngủ 🌙'; rDesc = 'Đang trong giờ đi ngủ của bé';
         dot.className = 'w-2 h-2 rounded-full bg-indigo-500';
       } else if (s.lockReason === 'TIME_LIMIT_EXCEEDED') {
@@ -481,7 +501,7 @@ async function loadAppStatus() {
     const lockCard = document.getElementById('instant-lock-card');
     const lockInput = document.getElementById('input-is-locked');
 
-    const isLockedNow = (s.lockReason === 'MANUAL_LOCK') || (lockInput && lockInput.checked);
+    const isLockedNow = Boolean(s.isLocked) || (s.lockReason === 'MANUAL_LOCK') || (lockInput && lockInput.checked);
 
     if (isLockedNow) {
       if (quickLockBtn) {

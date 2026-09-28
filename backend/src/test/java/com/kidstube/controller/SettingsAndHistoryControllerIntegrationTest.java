@@ -68,6 +68,52 @@ class SettingsAndHistoryControllerIntegrationTest {
     }
 
     @Test
+    @DisplayName("PUT /api/v1/parent/settings using dailyLimitMinutes alias should update and return 200")
+    void updateSettings_usingDailyLimitMinutesAlias_shouldReturn200() throws Exception {
+        String jsonPayload = """
+            {
+                "dailyLimitMinutes": 90,
+                "bedtimeStart": "20:30",
+                "bedtimeEnd": "06:30",
+                "isLocked": true
+            }
+            """;
+
+        mockMvc.perform(put("/api/v1/parent/settings")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(jsonPayload))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.dailyTimeLimitMinutes", is(90)))
+            .andExpect(jsonPath("$.dailyLimitMinutes", is(90)))
+            .andExpect(jsonPath("$.bedtimeStart", is("20:30")))
+            .andExpect(jsonPath("$.bedtimeEnd", is("06:30")))
+            .andExpect(jsonPath("$.isLocked", is(true)));
+    }
+
+    @Test
+    @DisplayName("PUT /api/v1/parent/settings with seconds in bedtime format should update and return 200")
+    void updateSettings_withSecondsInBedtime_shouldReturn200() throws Exception {
+        String jsonPayload = """
+            {
+                "dailyTimeLimitMinutes": 45,
+                "bedtimeStart": "21:15:00",
+                "bedtimeEnd": "07:45:00",
+                "isLocked": false
+            }
+            """;
+
+        mockMvc.perform(put("/api/v1/parent/settings")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(jsonPayload))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.dailyTimeLimitMinutes", is(45)))
+            .andExpect(jsonPath("$.bedtimeStart", is("21:15")))
+            .andExpect(jsonPath("$.bedtimeEnd", is("07:45")))
+            .andExpect(jsonPath("$.isLocked", is(false)));
+    }
+
+
+    @Test
     @DisplayName("PATCH /api/v1/parent/settings/lock should toggle lock status and return 200")
     void toggleLock_shouldReturn200() throws Exception {
         mockMvc.perform(patch("/api/v1/parent/settings/lock")

@@ -9,15 +9,28 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalTime;
 import java.time.OffsetDateTime;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeFormatterBuilder;
 
 @Service
 public class AppSettingsService {
 
     public static final int DEFAULT_SETTINGS_ID = 1;
+    private static final DateTimeFormatter FLEXIBLE_TIME_FORMATTER = new DateTimeFormatterBuilder()
+            .appendPattern("[H:mm:ss][HH:mm:ss][H:mm][HH:mm]")
+            .toFormatter();
+
     private final AppSettingRepository appSettingRepository;
 
     public AppSettingsService(AppSettingRepository appSettingRepository) {
         this.appSettingRepository = appSettingRepository;
+    }
+
+    public static LocalTime parseTime(String timeStr) {
+        if (timeStr == null || timeStr.isBlank()) {
+            return LocalTime.of(0, 0);
+        }
+        return LocalTime.parse(timeStr.trim(), FLEXIBLE_TIME_FORMATTER);
     }
 
     @Transactional(readOnly = true)
@@ -30,8 +43,8 @@ public class AppSettingsService {
     public SettingsResponse updateSettings(SettingsRequest request) {
         AppSetting setting = getOrCreateSettings();
         setting.setDailyTimeLimitMinutes(request.dailyTimeLimitMinutes());
-        setting.setBedtimeStart(LocalTime.parse(request.bedtimeStart()));
-        setting.setBedtimeEnd(LocalTime.parse(request.bedtimeEnd()));
+        setting.setBedtimeStart(parseTime(request.bedtimeStart()));
+        setting.setBedtimeEnd(parseTime(request.bedtimeEnd()));
         setting.setIsLocked(request.isLocked());
         setting.setUpdatedAt(OffsetDateTime.now());
 
@@ -66,3 +79,4 @@ public class AppSettingsService {
             });
     }
 }
+

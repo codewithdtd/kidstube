@@ -1,5 +1,6 @@
 package com.kidstube.domain.dto.response;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.kidstube.domain.entity.AppSetting;
 
 import java.time.OffsetDateTime;
@@ -14,6 +15,11 @@ public record SettingsResponse(
 ) {
     private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm");
 
+    @JsonProperty("dailyLimitMinutes")
+    public Integer getDailyLimitMinutes() {
+        return dailyTimeLimitMinutes;
+    }
+
     public static SettingsResponse fromEntity(AppSetting entity) {
         return new SettingsResponse(
             entity.getDailyTimeLimitMinutes(),
@@ -24,3 +30,4 @@ public record SettingsResponse(
         );
     }
 }
+

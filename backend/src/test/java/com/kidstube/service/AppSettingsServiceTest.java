@@ -110,4 +110,16 @@ class AppSettingsServiceTest {
         assertThat(response.dailyTimeLimitMinutes()).isEqualTo(45);
         verify(appSettingRepository).save(existing);
     }
+
+    @Test
+    @DisplayName("parseTime: Should parse HH:mm, HH:mm:ss, and H:mm formats correctly")
+    void parseTime_flexibleFormats() {
+        assertThat(AppSettingsService.parseTime("21:30")).isEqualTo(LocalTime.of(21, 30));
+        assertThat(AppSettingsService.parseTime("21:30:45")).isEqualTo(LocalTime.of(21, 30, 45));
+        assertThat(AppSettingsService.parseTime("7:00")).isEqualTo(LocalTime.of(7, 0));
+        assertThat(AppSettingsService.parseTime("07:00:00")).isEqualTo(LocalTime.of(7, 0, 0));
+        assertThat(AppSettingsService.parseTime("")).isEqualTo(LocalTime.of(0, 0));
+        assertThat(AppSettingsService.parseTime(null)).isEqualTo(LocalTime.of(0, 0));
+    }
 }
+
