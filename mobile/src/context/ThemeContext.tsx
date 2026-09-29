@@ -16,7 +16,7 @@ const ThemeContext = createContext<ThemeContextValue | undefined>(undefined);
 
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const systemColorScheme = useColorScheme();
-  const [themePreference, setThemePreference] = useState<ThemePreference>('dark'); // Default to dark as requested
+  const [themePreference, setThemePreference] = useState<ThemePreference>('system'); // Default to dark as requested
 
   const colors = useMemo<ThemeColors>(() => {
     if (themePreference === 'system') {

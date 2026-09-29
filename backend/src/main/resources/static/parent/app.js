@@ -24,10 +24,10 @@ function switchTab(tab) {
     const btn = document.getElementById(`tab-btn-${t}`);
     if (t === tab) {
       section.classList.remove('hidden');
-      btn.className = 'border-b-2 border-sky-600 text-sky-600 py-3.5 px-1 text-sm font-semibold flex items-center space-x-2 transition';
+      btn.className = 'whitespace-nowrap shrink-0 border-b-2 border-sky-600 text-sky-600 py-2.5 sm:py-3.5 px-2.5 sm:px-1 text-xs sm:text-sm font-bold sm:font-semibold flex items-center space-x-1.5 sm:space-x-2 transition';
     } else {
       section.classList.add('hidden');
-      btn.className = 'border-b-2 border-transparent text-slate-500 hover:text-slate-700 py-3.5 px-1 text-sm font-semibold flex items-center space-x-2 transition';
+      btn.className = 'whitespace-nowrap shrink-0 border-b-2 border-transparent text-slate-500 hover:text-slate-700 py-2.5 sm:py-3.5 px-2.5 sm:px-1 text-xs sm:text-sm font-bold sm:font-semibold flex items-center space-x-1.5 sm:space-x-2 transition';
     }
   });
   lucide.createIcons();
@@ -40,12 +40,12 @@ function switchTab(tab) {
 function showToast(message, type = 'success') {
   const container = document.getElementById('toast-container');
   const toast = document.createElement('div');
-  toast.className = `pointer-events-auto flex items-center space-x-2 px-4 py-3 rounded-xl shadow-lg border text-xs font-semibold transition-all transform duration-300 ease-out translate-y-4 opacity-0 ${
+  toast.className = `pointer-events-auto flex items-center space-x-2 px-4 py-3 rounded-xl shadow-lg border text-xs sm:text-sm font-semibold transition-all transform duration-300 ease-out translate-y-4 opacity-0 max-w-full ${
     type === 'success' ? 'bg-white border-emerald-200 text-emerald-800' : 'bg-white border-rose-200 text-rose-800'
   }`;
   const icon = type === 'success' ? 'check-circle-2' : 'alert-circle';
   const color = type === 'success' ? 'text-emerald-500' : 'text-rose-500';
-  toast.innerHTML = `<i data-lucide="${icon}" class="w-4 h-4 ${color}"></i><span>${message}</span>`;
+  toast.innerHTML = `<i data-lucide="${icon}" class="w-4 h-4 shrink-0 ${color}"></i><span class="truncate">${message}</span>`;
   container.appendChild(toast);
   lucide.createIcons();
   requestAnimationFrame(() => toast.classList.remove('translate-y-4', 'opacity-0'));
@@ -61,13 +61,25 @@ async function loadCategories() {
     if (!res.ok) throw new Error('Không thể tải danh mục');
     categories = await res.json();
 
+    // Populate Category Carousel Filter Bar
     const filterBar = document.getElementById('category-filter-bar');
-    filterBar.innerHTML = `
-      <button onclick="filterVideosByCategory(null)" class="category-pill active-pill px-3 py-1.5 rounded-lg text-xs font-semibold bg-sky-600 text-white transition" data-id="all">Tất cả</button>
-      ${categories.map(c => `
-        <button onclick="filterVideosByCategory(${c.id})" class="category-pill px-3 py-1.5 rounded-lg text-xs font-semibold bg-white border border-slate-200 hover:border-sky-300 text-slate-700 transition" data-id="${c.id}">${escapeHtml(c.name)}</button>
-      `).join('')}
-    `;
+    if (filterBar) {
+      filterBar.innerHTML = `
+        <button onclick="filterVideosByCategory(null)" class="category-pill active-pill whitespace-nowrap shrink-0 px-3 py-1.5 rounded-lg text-xs font-semibold bg-sky-600 text-white transition active:scale-95" data-id="all">Tất cả</button>
+        ${categories.map(c => `
+          <button onclick="filterVideosByCategory(${c.id})" class="category-pill whitespace-nowrap shrink-0 px-3 py-1.5 rounded-lg text-xs font-semibold bg-white border border-slate-200 hover:border-sky-300 text-slate-700 transition active:scale-95" data-id="${c.id}">${escapeHtml(c.name)}</button>
+        `).join('')}
+      `;
+    }
+
+    // Populate Import Category Select Dropdown
+    const categorySelect = document.getElementById('import-category-select');
+    if (categorySelect) {
+      categorySelect.innerHTML = `
+        <option value="auto">🎲 Tự động</option>
+        ${categories.map(c => `<option value="${c.id}">${escapeHtml(c.name)}</option>`).join('')}
+      `;
+    }
   } catch (err) {
     showToast(err.message, 'error');
   }
@@ -90,9 +102,9 @@ function filterVideosByCategory(categoryId) {
   document.querySelectorAll('.category-pill').forEach(btn => {
     const id = btn.getAttribute('data-id');
     if ((categoryId === null && id === 'all') || (categoryId !== null && id == categoryId)) {
-      btn.className = 'category-pill active-pill px-3 py-1.5 rounded-lg text-xs font-semibold bg-sky-600 text-white transition';
+      btn.className = 'category-pill active-pill whitespace-nowrap shrink-0 px-3 py-1.5 rounded-lg text-xs font-semibold bg-sky-600 text-white transition active:scale-95';
     } else {
-      btn.className = 'category-pill px-3 py-1.5 rounded-lg text-xs font-semibold bg-white border border-slate-200 hover:border-sky-300 text-slate-700 transition';
+      btn.className = 'category-pill whitespace-nowrap shrink-0 px-3 py-1.5 rounded-lg text-xs font-semibold bg-white border border-slate-200 hover:border-sky-300 text-slate-700 transition active:scale-95';
     }
   });
   loadVideos();
@@ -122,9 +134,9 @@ function filterByStatus(status) {
     const btn = document.getElementById(`filter-status-${s.toLowerCase()}`);
     if (btn) {
       if (s === status) {
-        btn.className = 'px-3 py-1.5 rounded-lg bg-white shadow-sm text-slate-900 font-bold transition';
+        btn.className = 'px-3 py-1.5 rounded-lg bg-white shadow-sm text-slate-900 font-bold transition whitespace-nowrap';
       } else {
-        btn.className = 'px-3 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 transition';
+        btn.className = 'px-3 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 transition whitespace-nowrap';
       }
     }
   });
@@ -235,7 +247,7 @@ function renderVideos() {
             ${video.isShort ? '<span class="px-1.5 py-0.5 rounded-md text-[10px] font-extrabold bg-rose-600 text-white shadow-sm flex items-center gap-0.5"><i data-lucide="zap" class="w-2.5 h-2.5"></i>Shorts</span>' : ''}
           </div>
         </div>
-        <div class="p-4 space-y-1.5">
+        <div class="p-3.5 sm:p-4 space-y-1.5">
           <div class="flex items-center justify-between text-[11px]">
             <span class="px-2 py-0.5 rounded-md bg-sky-50 text-sky-700 font-semibold truncate max-w-[130px]">
               ${escapeHtml(video.categoryName || 'Chung')}
@@ -253,17 +265,22 @@ function renderVideos() {
           </h4>
         </div>
       </div>
-      <div class="px-4 py-3 bg-slate-50 border-t border-slate-100 flex items-center justify-between">
-        <label class="flex items-center space-x-2 cursor-pointer select-none">
-          <input type="checkbox" ${video.isActive ? 'checked' : ''} onchange="toggleVideoStatus(${video.id}, this.checked)" class="w-4 h-4 rounded text-sky-600 accent-sky-600 cursor-pointer">
-          <span class="text-xs font-semibold ${video.isActive ? 'text-emerald-700' : 'text-slate-500'}">${video.isActive ? 'Mở cho bé' : 'Đang ẩn'}</span>
+      <div class="px-3.5 sm:px-4 py-2.5 sm:py-3 bg-slate-50 border-t border-slate-100 flex items-center justify-between">
+        <label class="flex items-center space-x-2 cursor-pointer select-none py-1">
+          <input type="checkbox" ${video.isActive ? 'checked' : ''} onchange="toggleVideoStatus(${video.id}, this.checked)" class="w-5 h-5 rounded text-sky-600 accent-sky-600 cursor-pointer">
+          <span class="text-xs font-bold ${video.isActive ? 'text-emerald-700' : 'text-slate-500'}">${video.isActive ? 'Mở cho bé' : 'Đang ẩn'}</span>
         </label>
-        <div class="flex items-center space-x-1">
+        <div class="flex items-center space-x-1 sm:space-x-1.5">
+          <button onclick="openVideoPreview('${video.youtubeVideoId}', '${escapeHtml(video.title)}')"
+                  class="p-2 text-slate-500 hover:text-sky-600 hover:bg-sky-50 rounded-xl transition flex items-center gap-1 text-xs font-semibold active:scale-95" title="Xem trước video">
+            <i data-lucide="play" class="w-4 h-4 text-sky-600"></i>
+            <span class="hidden sm:inline">Xem</span>
+          </button>
           <a href="https://www.youtube.com/watch?v=${video.youtubeVideoId}" target="_blank" rel="noopener noreferrer"
-             class="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition" title="Mở trên YouTube">
+             class="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition active:scale-95" title="Mở trên YouTube">
             <i data-lucide="external-link" class="w-4 h-4"></i>
           </a>
-          <button onclick="promptDeleteVideo(${video.id})" class="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition" title="Xóa video khỏi app bé">
+          <button onclick="promptDeleteVideo(${video.id})" class="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition active:scale-95" title="Xóa video khỏi app bé">
             <i data-lucide="trash-2" class="w-4 h-4"></i>
           </button>
         </div>
@@ -317,29 +334,36 @@ async function handleImportVideo(e) {
   e.preventDefault();
   const urlInput = document.getElementById('import-url');
   const shortsOnlyInput = document.getElementById('import-shorts-only');
+  const categorySelect = document.getElementById('import-category-select');
   const btn = document.getElementById('btn-import-submit');
   const url = urlInput.value.trim();
   const shortsOnly = shortsOnlyInput ? shortsOnlyInput.checked : false;
 
-  // Tự động chọn danh mục ngẫu nhiên để ba mẹ không cần thao tác phức tạp
-  const randomCategory = (categories && categories.length > 0)
-    ? categories[Math.floor(Math.random() * categories.length)].id
-    : null;
+  // Lấy danh mục được chọn hoặc tự động chọn ngẫu nhiên
+  let targetCategoryId = null;
+  if (categorySelect && categorySelect.value !== 'auto') {
+    targetCategoryId = parseInt(categorySelect.value, 10);
+  } else {
+    targetCategoryId = (categories && categories.length > 0)
+      ? categories[Math.floor(Math.random() * categories.length)].id
+      : null;
+  }
 
   btn.disabled = true;
-  btn.innerHTML = `<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i><span>Đang nạp...</span>`;
+  btn.innerHTML = `<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i><span>Đang quét & nạp...</span>`;
   lucide.createIcons();
 
   try {
     const res = await fetch('/api/v1/parent/videos/import', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ url, categoryId: randomCategory, shortsOnly })
+      body: JSON.stringify({ url, categoryId: targetCategoryId, shortsOnly })
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.detail || data.message || 'Không thể nạp video');
     showToast(data.message || `Đã nạp thành công ${data.importedCount} video!`);
     urlInput.value = '';
+    handleImportUrlChange('');
     if (shortsOnlyInput) shortsOnlyInput.checked = false;
     loadVideos();
   } catch (err) {
@@ -349,6 +373,65 @@ async function handleImportVideo(e) {
     btn.innerHTML = `<i data-lucide="download-cloud" class="w-4 h-4"></i><span>Nạp Video Ngay</span>`;
     lucide.createIcons();
   }
+}
+
+async function handlePasteFromClipboard() {
+  const urlInput = document.getElementById('import-url');
+  if (!urlInput) return;
+  try {
+    if (!navigator.clipboard || !navigator.clipboard.readText) {
+      urlInput.focus();
+      showToast('Vui lòng chạm giữ ô nhập để dán link', 'error');
+      return;
+    }
+    const text = await navigator.clipboard.readText();
+    if (!text || !text.trim()) {
+      showToast('Bộ nhớ tạm đang trống', 'error');
+      return;
+    }
+    urlInput.value = text.trim();
+    handleImportUrlChange(urlInput.value);
+    urlInput.focus();
+    showToast('Đã dán link từ bộ nhớ tạm! 🎉');
+  } catch (err) {
+    urlInput.focus();
+    showToast('Vui lòng chạm giữ ô nhập để dán link', 'error');
+  }
+}
+
+function handleImportUrlChange(val) {
+  const clearBtn = document.getElementById('btn-clear-url');
+  if (clearBtn) {
+    if (val && val.trim().length > 0) {
+      clearBtn.classList.remove('hidden');
+    } else {
+      clearBtn.classList.add('hidden');
+    }
+  }
+}
+
+function handleClearImportUrl() {
+  const urlInput = document.getElementById('import-url');
+  if (urlInput) {
+    urlInput.value = '';
+    urlInput.focus();
+  }
+  const clearBtn = document.getElementById('btn-clear-url');
+  if (clearBtn) clearBtn.classList.add('hidden');
+}
+
+function fillSampleChannel(channelHandle, isShorts) {
+  const urlInput = document.getElementById('import-url');
+  const shortsOnlyInput = document.getElementById('import-shorts-only');
+  if (urlInput) {
+    urlInput.value = channelHandle;
+    handleImportUrlChange(channelHandle);
+    urlInput.focus();
+  }
+  if (shortsOnlyInput && typeof isShorts === 'boolean') {
+    shortsOnlyInput.checked = isShorts;
+  }
+  showToast(`Đã điền kênh mẫu ${channelHandle}. Nhấn "Nạp Video Ngay" để quét!`);
 }
 
 async function loadSettings() {

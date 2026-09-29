@@ -93,6 +93,25 @@ class CorsAndStaticWebIntegrationTest {
     }
 
     @Test
+    @DisplayName("Static Parent Portal index.html and app.js should contain mobile responsive video import controls")
+    void testParentPortalMobileResponsiveImportElementsAndLogic() throws Exception {
+        mockMvc.perform(get("/parent/index.html"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("btn-paste-clipboard")))
+                .andExpect(content().string(containsString("btn-clear-url")))
+                .andExpect(content().string(containsString("import-shorts-only")))
+                .andExpect(content().string(containsString("import-category-select")))
+                .andExpect(content().string(containsString("no-scrollbar")));
+
+        mockMvc.perform(get("/parent/app.js"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("handlePasteFromClipboard")))
+                .andExpect(content().string(containsString("handleClearImportUrl")))
+                .andExpect(content().string(containsString("fillSampleChannel")))
+                .andExpect(content().string(containsString("handleImportUrlChange")));
+    }
+
+    @Test
     @DisplayName("Root index.html redirect should be accessible")
     void testRootIndexAccessible() throws Exception {
         mockMvc.perform(get("/index.html"))

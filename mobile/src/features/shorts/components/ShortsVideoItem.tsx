@@ -10,6 +10,8 @@ interface ShortsVideoItemProps {
   isActive: boolean;
   itemHeight: number;
   itemWidth: number;
+  isMuted?: boolean;
+  onToggleMute?: () => void;
 }
 
 export const ShortsVideoItem: React.FC<ShortsVideoItemProps> = ({
@@ -17,10 +19,13 @@ export const ShortsVideoItem: React.FC<ShortsVideoItemProps> = ({
   isActive,
   itemHeight,
   itemWidth,
+  isMuted: isMutedProp,
+  onToggleMute: onToggleMuteProp,
 }) => {
   const [isPlaying, setIsPlaying] = useState<boolean>(true);
-  // Default to muted: guarantees 100% autoplay compliance across iOS, Android, and Web browsers
-  const [isMuted, setIsMuted] = useState<boolean>(true);
+  // Default to false (auto unmute sound enabled) if prop is omitted
+  const [internalMuted, setInternalMuted] = useState<boolean>(false);
+  const isMuted = isMutedProp !== undefined ? isMutedProp : internalMuted;
   const [isKidsLocked, setIsKidsLocked] = useState<boolean>(false);
   const [isSubscribed, setIsSubscribed] = useState<boolean>(false);
   const [showPlayStateIndicator, setShowPlayStateIndicator] = useState<boolean>(false);
@@ -40,6 +45,16 @@ export const ShortsVideoItem: React.FC<ShortsVideoItemProps> = ({
           }),
           '*'
         );
+        if (command === 'unMute') {
+          iframeRef.current?.contentWindow?.postMessage(
+            JSON.stringify({
+              event: 'command',
+              func: 'setVolume',
+              args: [100],
+            }),
+            '*'
+          );
+        }
       } catch (err) {
         console.warn('[Shorts Web] postMessage error:', err);
       }
@@ -49,6 +64,9 @@ export const ShortsVideoItem: React.FC<ShortsVideoItemProps> = ({
           try {
             if (window.player && typeof window.player.${command} === 'function') {
               window.player.${command}();
+              if ('${command}' === 'unMute' && typeof window.player.setVolume === 'function') {
+                window.player.setVolume(100);
+              }
             } else {
               var iframe = document.getElementById('yt-player');
               if (iframe && iframe.contentWindow) {
@@ -57,6 +75,13 @@ export const ShortsVideoItem: React.FC<ShortsVideoItemProps> = ({
                   func: '${command}',
                   args: []
                 }), '*');
+                if ('${command}' === 'unMute') {
+                  iframe.contentWindow.postMessage(JSON.stringify({
+                    event: 'command',
+                    func: 'setVolume',
+                    args: [100]
+                  }), '*');
+                }
               }
             }
           } catch(e) {}
@@ -67,16 +92,34 @@ export const ShortsVideoItem: React.FC<ShortsVideoItemProps> = ({
     }
   };
 
-  // Sync play state when item becomes active or inactive
+  // Sync play state and auto-unmute when item becomes active
   useEffect(() => {
     if (isActive) {
       setIsPlaying(true);
       sendPlayerCommand('playVideo');
+      if (!isMuted) {
+        sendPlayerCommand('unMute');
+        const t1 = setTimeout(() => sendPlayerCommand('unMute'), 300);
+        const t2 = setTimeout(() => sendPlayerCommand('unMute'), 800);
+        return () => {
+          clearTimeout(t1);
+          clearTimeout(t2);
+        };
+      } else {
+        sendPlayerCommand('mute');
+      }
     } else {
       setIsPlaying(false);
       sendPlayerCommand('pauseVideo');
     }
-  }, [isActive]);
+  }, [isActive, isMuted]);
+
+  // React to dynamic sound toggle from parent/user
+  useEffect(() => {
+    if (isActive) {
+      sendPlayerCommand(isMuted ? 'mute' : 'unMute');
+    }
+  }, [isMuted, isActive]);
 
   const handleTogglePlay = () => {
     if (isKidsLocked) return;
@@ -88,9 +131,13 @@ export const ShortsVideoItem: React.FC<ShortsVideoItemProps> = ({
   };
 
   const handleToggleMute = () => {
-    const nextMuted = !isMuted;
-    setIsMuted(nextMuted);
-    sendPlayerCommand(nextMuted ? 'mute' : 'unMute');
+    if (onToggleMuteProp) {
+      onToggleMuteProp();
+    } else {
+      const nextMuted = !internalMuted;
+      setInternalMuted(nextMuted);
+      sendPlayerCommand(nextMuted ? 'mute' : 'unMute');
+    }
   };
 
   const handleToggleKidsLock = () => {
@@ -136,7 +183,7 @@ export const ShortsVideoItem: React.FC<ShortsVideoItemProps> = ({
           host: 'https://www.youtube-nocookie.com',
           playerVars: {
             autoplay: 1,
-            mute: 1,
+            mute: ${isMuted ? 1 : 0},
             controls: 0,
             playsinline: 1,
             rel: 0,
@@ -148,8 +195,23 @@ export const ShortsVideoItem: React.FC<ShortsVideoItemProps> = ({
           },
           events: {
             onReady: function(e) {
-              e.target.mute();
+              try {
+                if (${!isMuted}) {
+                  e.target.unMute();
+                  if (typeof e.target.setVolume === 'function') e.target.setVolume(100);
+                } else {
+                  e.target.mute();
+                }
+              } catch(err) {}
               e.target.playVideo();
+            },
+            onStateChange: function(e) {
+              if (e.data === 1 && ${!isMuted}) {
+                try {
+                  e.target.unMute();
+                  if (typeof e.target.setVolume === 'function') e.target.setVolume(100);
+                } catch(err) {}
+              }
             }
           }
         });
@@ -166,7 +228,12 @@ export const ShortsVideoItem: React.FC<ShortsVideoItemProps> = ({
           if (msg.func === 'playVideo') window.player.playVideo();
           if (msg.func === 'pauseVideo') window.player.pauseVideo();
           if (msg.func === 'mute') window.player.mute();
-          if (msg.func === 'unMute') window.player.unMute();
+          if (msg.func === 'unMute') {
+            window.player.unMute();
+            if (typeof window.player.setVolume === 'function') {
+              window.player.setVolume(100);
+            }
+          }
         } catch(e) {}
       }
     </script>
@@ -182,7 +249,7 @@ export const ShortsVideoItem: React.FC<ShortsVideoItemProps> = ({
             key={short.youtubeVideoId}
             src={`https://www.youtube-nocookie.com/embed/${short.youtubeVideoId}?autoplay=${
               isActive ? 1 : 0
-            }&mute=1&controls=0&playsinline=1&loop=1&playlist=${short.youtubeVideoId}&rel=0&modestbranding=1&enablejsapi=1`}
+            }&mute=${isMuted ? 1 : 0}&controls=0&playsinline=1&loop=1&playlist=${short.youtubeVideoId}&rel=0&modestbranding=1&enablejsapi=1`}
             style={{
               width: '100%',
               height: '100%',

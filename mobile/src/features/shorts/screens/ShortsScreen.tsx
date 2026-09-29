@@ -36,9 +36,24 @@ export const ShortsScreen: React.FC<ShortsScreenProps> = ({ navigation }) => {
   const [activeIndex, setActiveIndex] = useState<number>(0);
   const [remainingSeconds, setRemainingSeconds] = useState<number>(1800);
 
+  // Global sound state across Shorts feed (Default: false -> Auto Unmute Sound Enabled)
+  const [isMuted, setIsMuted] = useState<boolean>(false);
+  const [soundToast, setSoundToast] = useState<string | null>(null);
+
   const flatListRef = useRef<FlatList<ShortVideo>>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const watchedSecondsRef = useRef<number>(0);
+
+  const handleToggleMute = useCallback(() => {
+    setIsMuted((prev) => {
+      const next = !prev;
+      setSoundToast(!next ? '🔊 Tự động phát âm thanh' : '🔇 Đã tắt âm thanh');
+      setTimeout(() => {
+        setSoundToast(null);
+      }, 1500);
+      return next;
+    });
+  }, []);
 
   const handleScrollToNext = () => {
     if (activeIndex < shorts.length - 1) {
@@ -145,6 +160,20 @@ export const ShortsScreen: React.FC<ShortsScreenProps> = ({ navigation }) => {
       <View style={[styles.topBar, { paddingTop: Math.max(insets.top, 14) }]}>
         <Text style={styles.headerTitle}>Shorts</Text>
         <View style={styles.topRightActions}>
+          {/* Sound Mode Toggle Chip */}
+          <TouchableOpacity
+            style={[styles.soundToggleChip, !isMuted ? styles.soundToggleActive : styles.soundToggleMuted]}
+            activeOpacity={0.7}
+            onPress={handleToggleMute}
+          >
+            <MaterialCommunityIcons
+              name={!isMuted ? 'volume-high' : 'volume-off'}
+              size={16}
+              color={!isMuted ? '#22c55e' : '#f59e0b'}
+            />
+            <Text style={styles.soundToggleText}>{!isMuted ? 'Âm thanh: BẬT' : 'Tắt tiếng'}</Text>
+          </TouchableOpacity>
+
           <View style={styles.screenTimeChip}>
             <MaterialCommunityIcons name="timer-outline" size={14} color="#ef4444" />
             <Text style={styles.screenTimeText}>Còn {remainingMinutes}p</Text>
@@ -154,6 +183,15 @@ export const ShortsScreen: React.FC<ShortsScreenProps> = ({ navigation }) => {
           </TouchableOpacity>
         </View>
       </View>
+
+      {/* Sound Mode Toast Feedback */}
+      {soundToast && (
+        <View style={styles.soundToastContainer} pointerEvents="none">
+          <View style={styles.soundToastBadge}>
+            <Text style={styles.soundToastText}>{soundToast}</Text>
+          </View>
+        </View>
+      )}
 
       {/* Vertical Paging Shorts List */}
       <FlatList
@@ -187,6 +225,8 @@ export const ShortsScreen: React.FC<ShortsScreenProps> = ({ navigation }) => {
             isActive={index === activeIndex}
             itemHeight={itemHeight}
             itemWidth={contentWidth}
+            isMuted={isMuted}
+            onToggleMute={handleToggleMute}
           />
         )}
       />
@@ -259,7 +299,53 @@ const styles = StyleSheet.create({
   topRightActions: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 8,
+  },
+  soundToggleChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    borderRadius: 16,
+    gap: 4,
+    borderWidth: 1,
+  },
+  soundToggleActive: {
+    borderColor: 'rgba(34, 197, 94, 0.45)',
+    backgroundColor: 'rgba(20, 83, 45, 0.65)',
+  },
+  soundToggleMuted: {
+    borderColor: 'rgba(245, 158, 11, 0.45)',
+    backgroundColor: 'rgba(120, 53, 15, 0.65)',
+  },
+  soundToggleText: {
+    color: '#ffffff',
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  soundToastContainer: {
+    position: 'absolute',
+    top: 85,
+    alignSelf: 'center',
+    zIndex: 60,
+  },
+  soundToastBadge: {
+    backgroundColor: 'rgba(15, 23, 42, 0.94)',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.25)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 6,
+    elevation: 6,
+  },
+  soundToastText: {
+    color: '#ffffff',
+    fontSize: 13,
+    fontWeight: '700',
   },
   screenTimeChip: {
     flexDirection: 'row',
