@@ -86,7 +86,8 @@ public class ScreenTimeService {
             isLocked,
             isBedtime,
             lockReason,
-            message
+            message,
+            setting.getUiMode() != null ? setting.getUiMode() : "KIDS_WORLD"
         );
     }
 

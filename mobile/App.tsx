@@ -3,6 +3,7 @@ import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { RootNavigator } from './src/navigation/RootNavigator';
 import { ThemeProvider, useAppTheme } from './src/context/ThemeContext';
+import { UiModeProvider } from './src/context/UiModeContext';
 
 const AppContent: React.FC = () => {
   const { colors } = useAppTheme();
@@ -18,7 +19,9 @@ export default function App() {
   return (
     <SafeAreaProvider>
       <ThemeProvider>
-        <AppContent />
+        <UiModeProvider>
+          <AppContent />
+        </UiModeProvider>
       </ThemeProvider>
     </SafeAreaProvider>
   );

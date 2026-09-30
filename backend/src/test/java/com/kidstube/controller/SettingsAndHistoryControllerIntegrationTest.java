@@ -49,7 +49,8 @@ class SettingsAndHistoryControllerIntegrationTest {
             .andExpect(jsonPath("$.dailyTimeLimitMinutes", notNullValue()))
             .andExpect(jsonPath("$.bedtimeStart", notNullValue()))
             .andExpect(jsonPath("$.bedtimeEnd", notNullValue()))
-            .andExpect(jsonPath("$.isLocked", notNullValue()));
+            .andExpect(jsonPath("$.isLocked", notNullValue()))
+            .andExpect(jsonPath("$.uiMode", notNullValue()));
     }
 
     @Test
@@ -127,6 +128,20 @@ class SettingsAndHistoryControllerIntegrationTest {
             .andExpect(jsonPath("$.isLocked", is(false)));
     }
 
+    @Test
+    @DisplayName("PATCH /api/v1/parent/settings/ui-mode should toggle UI mode and return 200")
+    void updateUiMode_shouldReturn200() throws Exception {
+        mockMvc.perform(patch("/api/v1/parent/settings/ui-mode")
+                .param("uiMode", "YOUTUBE"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.uiMode", is("YOUTUBE")));
+
+        mockMvc.perform(patch("/api/v1/parent/settings/ui-mode")
+                .param("uiMode", "KIDS_WORLD"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.uiMode", is("KIDS_WORLD")));
+    }
+
 
     @Test
     @DisplayName("PUT /api/v1/parent/settings with invalid time format should return 400 RFC 7807")
@@ -164,7 +179,8 @@ class SettingsAndHistoryControllerIntegrationTest {
             .andExpect(jsonPath("$.isAllowed", notNullValue()))
             .andExpect(jsonPath("$.remainingSeconds", greaterThanOrEqualTo(0)))
             .andExpect(jsonPath("$.dailyLimitMinutes", greaterThanOrEqualTo(5)))
-            .andExpect(jsonPath("$.message", notNullValue()));
+            .andExpect(jsonPath("$.message", notNullValue()))
+            .andExpect(jsonPath("$.uiMode", notNullValue()));
     }
 
     @Test

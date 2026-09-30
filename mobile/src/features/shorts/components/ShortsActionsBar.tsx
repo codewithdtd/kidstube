@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Animated } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { ShortVideo } from '../../../types/models';
 
@@ -22,76 +22,61 @@ export const ShortsActionsBar: React.FC<ShortsActionsBarProps> = ({
   onToggleMute,
   commentsCount,
   onOpenComments,
-  onShare,
 }) => {
   const [isLiked, setIsLiked] = useState<boolean>(false);
-  const [isDisliked, setIsDisliked] = useState<boolean>(false);
   const [likeCount, setLikeCount] = useState<number>(short.likesCount);
 
   const handleLike = () => {
     if (isLiked) {
       setIsLiked(false);
-      setLikeCount((prev) => prev - 1);
+      setLikeCount((prev) => Math.max(0, prev - 1));
     } else {
       setIsLiked(true);
       setLikeCount((prev) => prev + 1);
-      if (isDisliked) setIsDisliked(false);
-    }
-  };
-
-  const handleDislike = () => {
-    if (isDisliked) {
-      setIsDisliked(false);
-    } else {
-      setIsDisliked(true);
-      if (isLiked) {
-        setIsLiked(false);
-        setLikeCount((prev) => prev - 1);
-      }
     }
   };
 
   const formatCount = (count: number): string => {
-    if (count >= 1000000) return (count / 1000000).toFixed(1) + 'Tr';
-    if (count >= 1000) return (count / 1000).toFixed(1) + 'N';
+    if (count >= 1000000) return (count / 1000000).toFixed(1) + 'M';
+    if (count >= 1000) return (count / 1000).toFixed(1) + 'k';
     return count.toString();
   };
 
   return (
     <View style={styles.container}>
-      {/* 0. Play / Pause Control Button */}
+      {/* 1. Play / Pause Control Button */}
       <TouchableOpacity
         style={styles.actionBtn}
         activeOpacity={0.7}
         onPress={onTogglePlay}
       >
-        <View style={[styles.iconCircle, isPlaying ? styles.iconCircle : styles.pausedCircle]}>
+        <View style={[styles.iconCircle, !isPlaying && styles.pausedCircle]}>
           <MaterialCommunityIcons
             name={isPlaying ? 'pause' : 'play'}
-            size={28}
+            size={26}
             color="#ffffff"
           />
         </View>
         <Text style={styles.actionLabel}>{isPlaying ? 'Tạm dừng' : 'Phát'}</Text>
       </TouchableOpacity>
 
-      {/* 1. Mute / Unmute Audio Toggle */}
+      {/* 2. Mute / Unmute Audio Toggle */}
       <TouchableOpacity
         style={styles.actionBtn}
         activeOpacity={0.7}
         onPress={onToggleMute}
       >
-        <View style={[styles.iconCircle, isMuted ? styles.mutedCircle : styles.iconCircle]}>
+        <View style={[styles.iconCircle, isMuted && styles.mutedCircle]}>
           <MaterialCommunityIcons
             name={isMuted ? 'volume-off' : 'volume-high'}
-            size={26}
+            size={24}
             color={isMuted ? '#f59e0b' : '#ffffff'}
           />
         </View>
         <Text style={styles.actionLabel}>{isMuted ? 'Bật tiếng' : 'Tắt tiếng'}</Text>
       </TouchableOpacity>
 
-      {/* 2. Like Button */}
+      {/* 3. Kid Heart Reaction (Thả Tim - Replaces boring thumbs up) */}
       <TouchableOpacity
         style={styles.actionBtn}
         activeOpacity={0.7}
@@ -99,31 +84,17 @@ export const ShortsActionsBar: React.FC<ShortsActionsBarProps> = ({
       >
         <View style={[styles.iconCircle, isLiked && styles.likedCircle]}>
           <MaterialCommunityIcons
-            name={isLiked ? 'thumb-up' : 'thumb-up-outline'}
+            name={isLiked ? 'heart' : 'heart-outline'}
             size={26}
             color={isLiked ? '#ef4444' : '#ffffff'}
           />
         </View>
-        <Text style={styles.actionLabel}>{formatCount(likeCount)}</Text>
+        <Text style={[styles.actionLabel, isLiked && styles.likedLabel]}>
+          {formatCount(likeCount)}
+        </Text>
       </TouchableOpacity>
 
-      {/* 3. Dislike Button */}
-      <TouchableOpacity
-        style={styles.actionBtn}
-        activeOpacity={0.7}
-        onPress={handleDislike}
-      >
-        <View style={styles.iconCircle}>
-          <MaterialCommunityIcons
-            name={isDisliked ? 'thumb-down' : 'thumb-down-outline'}
-            size={26}
-            color={isDisliked ? '#94a3b8' : '#ffffff'}
-          />
-        </View>
-        <Text style={styles.actionLabel}>Không thích</Text>
-      </TouchableOpacity>
-
-      {/* 4. Comments Button (Interactive for 6yo child) */}
+      {/* 4. Interactive Comments Sheet */}
       <TouchableOpacity
         style={styles.actionBtn}
         activeOpacity={0.7}
@@ -136,27 +107,10 @@ export const ShortsActionsBar: React.FC<ShortsActionsBarProps> = ({
             color="#ffffff"
           />
         </View>
-        <Text style={styles.actionLabel}>{formatCount(commentsCount || short.commentsCount || 12)}</Text>
+        <Text style={styles.actionLabel}>
+          {formatCount(commentsCount || short.commentsCount || 12)}
+        </Text>
       </TouchableOpacity>
-
-      {/* 5. Share Button */}
-      <TouchableOpacity
-        style={styles.actionBtn}
-        activeOpacity={0.7}
-        onPress={onShare}
-      >
-        <View style={styles.iconCircle}>
-          <MaterialCommunityIcons name="share-variant" size={26} color="#ffffff" />
-        </View>
-        <Text style={styles.actionLabel}>Chia sẻ</Text>
-      </TouchableOpacity>
-
-      {/* 6. Music Disc Avatar */}
-      <View style={styles.discContainer}>
-        <View style={styles.discOuter}>
-          <MaterialCommunityIcons name="music-note" size={18} color="#ffffff" />
-        </View>
-      </View>
     </View>
   );
 };
@@ -202,28 +156,14 @@ const styles = StyleSheet.create({
   actionLabel: {
     color: '#ffffff',
     fontSize: 11,
-    fontWeight: '600',
+    fontWeight: '700',
     marginTop: 4,
     textShadowColor: 'rgba(0, 0, 0, 0.8)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 2,
   },
-  discContainer: {
-    marginTop: 6,
-  },
-  discOuter: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: '#1e293b',
-    borderWidth: 2,
-    borderColor: '#ffffff',
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.5,
-    shadowRadius: 4,
-    elevation: 4,
+  likedLabel: {
+    color: '#f87171',
+    fontWeight: '800',
   },
 });

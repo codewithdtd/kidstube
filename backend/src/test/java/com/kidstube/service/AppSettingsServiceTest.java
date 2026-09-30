@@ -112,6 +112,27 @@ class AppSettingsServiceTest {
     }
 
     @Test
+    @DisplayName("updateUiMode: Should update uiMode and save")
+    void updateUiMode_success() {
+        AppSetting existing = AppSetting.builder()
+            .id(1)
+            .dailyTimeLimitMinutes(45)
+            .bedtimeStart(LocalTime.of(21, 0))
+            .bedtimeEnd(LocalTime.of(7, 0))
+            .isLocked(false)
+            .uiMode("KIDS_WORLD")
+            .build();
+
+        when(appSettingRepository.findById(1)).thenReturn(Optional.of(existing));
+        when(appSettingRepository.save(any(AppSetting.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        SettingsResponse response = appSettingsService.updateUiMode("YOUTUBE");
+
+        assertThat(response.uiMode()).isEqualTo("YOUTUBE");
+        verify(appSettingRepository).save(existing);
+    }
+
+    @Test
     @DisplayName("parseTime: Should parse HH:mm, HH:mm:ss, and H:mm formats correctly")
     void parseTime_flexibleFormats() {
         assertThat(AppSettingsService.parseTime("21:30")).isEqualTo(LocalTime.of(21, 30));

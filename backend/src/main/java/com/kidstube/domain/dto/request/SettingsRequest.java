@@ -23,7 +23,12 @@ public record SettingsRequest(
     String bedtimeEnd,
 
     @NotNull(message = "isLocked is required")
-    Boolean isLocked
+    Boolean isLocked,
+
+    String uiMode
 ) {
+    public SettingsRequest(Integer dailyTimeLimitMinutes, String bedtimeStart, String bedtimeEnd, Boolean isLocked) {
+        this(dailyTimeLimitMinutes, bedtimeStart, bedtimeEnd, isLocked, "KIDS_WORLD");
+    }
 }
 

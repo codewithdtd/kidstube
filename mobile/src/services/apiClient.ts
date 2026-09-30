@@ -180,6 +180,7 @@ export async function fetchAppStatus(): Promise<ScreenTimeStatus> {
     isBedtime: false,
     lockReason: null,
     message: null,
+    uiMode: 'KIDS_WORLD',
   };
 
   try {
@@ -224,6 +225,21 @@ export async function toggleParentLock(isLocked: boolean): Promise<boolean> {
     return res.ok;
   } catch (error) {
     console.warn('[API] Failed to toggle lock:', error);
+    return false;
+  }
+}
+
+/**
+ * Update UI mode setting to backend (YOUTUBE or KIDS_WORLD)
+ */
+export async function updateUiModeApi(mode: 'YOUTUBE' | 'KIDS_WORLD'): Promise<boolean> {
+  try {
+    const res = await fetchWithTimeout(`${API_BASE_URL}/api/v1/parent/settings/ui-mode?uiMode=${mode}`, {
+      method: 'PATCH',
+    });
+    return res.ok;
+  } catch (error) {
+    console.warn('[API] Failed to update ui-mode:', error);
     return false;
   }
 }

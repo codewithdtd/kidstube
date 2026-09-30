@@ -46,6 +46,10 @@ public class AppSettingsService {
         setting.setBedtimeStart(parseTime(request.bedtimeStart()));
         setting.setBedtimeEnd(parseTime(request.bedtimeEnd()));
         setting.setIsLocked(request.isLocked());
+        if (request.uiMode() != null && !request.uiMode().isBlank()) {
+            String normalized = request.uiMode().trim().equalsIgnoreCase("YOUTUBE") ? "YOUTUBE" : "KIDS_WORLD";
+            setting.setUiMode(normalized);
+        }
         setting.setUpdatedAt(OffsetDateTime.now());
 
         AppSetting saved = appSettingRepository.save(setting);
@@ -62,6 +66,16 @@ public class AppSettingsService {
         return SettingsResponse.fromEntity(saved);
     }
 
+    @Transactional
+    public SettingsResponse updateUiMode(String uiMode) {
+        AppSetting setting = getOrCreateSettings();
+        String normalized = (uiMode != null && uiMode.trim().equalsIgnoreCase("YOUTUBE")) ? "YOUTUBE" : "KIDS_WORLD";
+        setting.setUiMode(normalized);
+        setting.setUpdatedAt(OffsetDateTime.now());
+
+        AppSetting saved = appSettingRepository.save(setting);
+        return SettingsResponse.fromEntity(saved);
+    }
 
     @Transactional
     public AppSetting getOrCreateSettings() {
@@ -73,6 +87,7 @@ public class AppSettingsService {
                     .bedtimeStart(LocalTime.of(21, 0))
                     .bedtimeEnd(LocalTime.of(7, 0))
                     .isLocked(false)
+                    .uiMode("KIDS_WORLD")
                     .updatedAt(OffsetDateTime.now())
                     .build();
                 return appSettingRepository.save(defaultSetting);

@@ -44,5 +44,11 @@ public class ParentSettingsController {
         return ResponseEntity.ok(appSettingsService.toggleLock(isLocked));
     }
 
+    @PatchMapping("/ui-mode")
+    @Operation(summary = "Update active UI mode", description = "Switch between YOUTUBE clone and KIDS_WORLD custom playful wonderland theme")
+    public ResponseEntity<SettingsResponse> updateUiMode(@RequestParam String uiMode) {
+        return ResponseEntity.ok(appSettingsService.updateUiMode(uiMode));
+    }
+
 }
 

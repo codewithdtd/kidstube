@@ -30,7 +30,6 @@ export const ShortsVideoItem: React.FC<ShortsVideoItemProps> = ({
   // Default to false (auto unmute sound enabled) if prop is omitted
   const [internalMuted, setInternalMuted] = useState<boolean>(false);
   const isMuted = isMutedProp !== undefined ? isMutedProp : internalMuted;
-  const [isSubscribed, setIsSubscribed] = useState<boolean>(false);
   const [showPlayStateIndicator, setShowPlayStateIndicator] = useState<boolean>(false);
 
   const webViewRef = useRef<any>(null);
@@ -302,28 +301,16 @@ export const ShortsVideoItem: React.FC<ShortsVideoItemProps> = ({
       <View style={styles.bottomInfoContainer} pointerEvents="box-none">
         <View style={styles.channelRow}>
           <View style={styles.avatar}>
-            <Text style={styles.avatarText}>{short.channelTitle.charAt(0)}</Text>
+            <Text style={styles.avatarText}>{short.channelTitle.charAt(0).toUpperCase()}</Text>
           </View>
           <Text style={styles.channelName} numberOfLines={1}>{short.channelTitle}</Text>
-          <TouchableOpacity
-            style={[styles.subscribeBtn, isSubscribed && styles.subscribedBtn]}
-            activeOpacity={0.8}
-            onPress={() => setIsSubscribed((p) => !p)}
-          >
-            <Text style={[styles.subscribeText, isSubscribed && styles.subscribedText]}>
-              {isSubscribed ? 'Đã đăng ký' : 'Đăng ký'}
-            </Text>
-          </TouchableOpacity>
+          <View style={styles.verifiedBadge}>
+            <MaterialCommunityIcons name="check-decagram" size={13} color="#38bdf8" />
+            <Text style={styles.verifiedText}>An toàn</Text>
+          </View>
         </View>
 
         <Text style={styles.titleText} numberOfLines={2}>{short.title}</Text>
-
-        {short.soundTitle && (
-          <View style={styles.soundRow}>
-            <MaterialCommunityIcons name="music" size={14} color="#ffffff" />
-            <Text style={styles.soundText} numberOfLines={1}>{short.soundTitle}</Text>
-          </View>
-        )}
       </View>
 
       <ShortsActionsBar
@@ -439,44 +426,29 @@ const styles = StyleSheet.create({
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 3,
   },
-  subscribeBtn: {
-    backgroundColor: '#ffffff',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 14,
+  verifiedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    backgroundColor: 'rgba(15, 23, 42, 0.6)',
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(56, 189, 248, 0.3)',
   },
-  subscribedBtn: {
-    backgroundColor: 'rgba(255, 255, 255, 0.25)',
-  },
-  subscribeText: {
-    color: '#0f172a',
-    fontSize: 11,
+  verifiedText: {
+    color: '#38bdf8',
+    fontSize: 10,
     fontWeight: '700',
-  },
-  subscribedText: {
-    color: '#ffffff',
   },
   titleText: {
     color: '#ffffff',
     fontSize: 13,
-    fontWeight: '500',
+    fontWeight: '600',
     lineHeight: 18,
-    marginBottom: 6,
     textShadowColor: 'rgba(0, 0, 0, 0.8)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 3,
-  },
-  soundRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  soundText: {
-    color: '#ffffff',
-    fontSize: 11,
-    opacity: 0.9,
-    textShadowColor: 'rgba(0, 0, 0, 0.8)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 2,
   },
 });

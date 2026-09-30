@@ -53,6 +53,10 @@
       </div>
 
       <div class="flex items-center space-x-2 sm:space-x-3 shrink-0">
+        <button id="btn-quick-toggle-uimode" onclick="toggleQuickUiMode()" class="px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-bold border transition flex items-center space-x-1.5 bg-indigo-50 border-indigo-200 text-indigo-700 hover:bg-indigo-100 active:scale-95" title="Đổi giao diện ứng dụng cho bé">
+          <span id="header-uimode-icon">🚀</span>
+          <span id="header-uimode-text" class="hidden sm:inline">KidsZone</span>
+        </button>
         <div id="header-status-pill" class="hidden md:flex items-center space-x-2 px-3 py-1.5 rounded-full bg-slate-100 text-xs font-medium text-slate-700 border border-slate-200">
           <span class="w-2 h-2 rounded-full bg-slate-400" id="header-status-dot"></span>
           <span id="header-status-text">Đang kiểm tra...</span>
@@ -270,6 +274,43 @@
           </div>
         </div>
         <form id="settings-form" onsubmit="handleSaveSettings(event)" class="space-y-6">
+          <!-- GIAO DIỆN ỨNG DỤNG CHO BÉ -->
+          <div class="bg-gradient-to-r from-slate-50 to-indigo-50 rounded-xl p-5 border border-indigo-200 space-y-3">
+            <div class="flex items-center justify-between">
+              <label class="text-sm font-bold text-slate-800 flex items-center space-x-2">
+                <i data-lucide="palette" class="w-4 h-4 text-indigo-600"></i>
+                <span>Giao diện ứng dụng cho bé (App Theme)</span>
+              </label>
+              <span id="badge-current-ui-mode" class="text-[11px] text-indigo-700 bg-indigo-100 border border-indigo-200 px-2.5 py-0.5 rounded-full font-bold">KidsZone (6-7 tuổi)</span>
+            </div>
+            <p class="text-xs text-slate-600">Lựa chọn phong cách trải nghiệm hiển thị trên app KidsTube của bé:</p>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+              <!-- Mode 1: KidsZone (6-7 tuổi) -->
+              <button type="button" onclick="handleSelectUiMode('KIDS_WORLD')" id="btn-mode-kidsworld" class="p-3.5 rounded-xl border-2 transition text-left relative flex flex-col justify-between bg-white border-indigo-500 shadow-sm cursor-pointer">
+                <div class="flex items-center justify-between mb-2">
+                  <div class="flex items-center space-x-2">
+                    <span class="text-xl">🚀</span>
+                    <span class="text-xs font-bold text-slate-900">KidsZone (6-7 tuổi)</span>
+                  </div>
+                  <span id="check-kidsworld" class="w-4 h-4 rounded-full bg-indigo-500 flex items-center justify-center text-white text-[10px] font-bold">✓</span>
+                </div>
+                <p class="text-[11px] text-slate-500 leading-snug">Giao diện năng động, phong cách game & khám phá khoa học, thẻ video 16:9 sắc nét, lọc sạch mạng xã hội, tối ưu cho học sinh tiểu học.</p>
+              </button>
+
+              <!-- Mode 2: YouTube Clone -->
+              <button type="button" onclick="handleSelectUiMode('YOUTUBE')" id="btn-mode-youtube" class="p-3.5 rounded-xl border-2 transition text-left relative flex flex-col justify-between bg-white border-slate-200 hover:border-slate-300 cursor-pointer">
+                <div class="flex items-center justify-between mb-2">
+                  <div class="flex items-center space-x-2">
+                    <span class="text-xl">📺</span>
+                    <span class="text-xs font-bold text-slate-900">YouTube Kids Chuẩn</span>
+                  </div>
+                  <span id="check-youtube" class="w-4 h-4 rounded-full bg-slate-200 hidden items-center justify-center text-white text-[10px] font-bold">✓</span>
+                </div>
+                <p class="text-[11px] text-slate-500 leading-snug">Giao diện quen thuộc mô phỏng ứng dụng YouTube với tông màu thanh thoát, bố cục lưới chuẩn.</p>
+              </button>
+            </div>
+          </div>
+
           <div class="bg-slate-50 rounded-xl p-5 border border-slate-200 space-y-3">
             <div class="flex items-center justify-between mb-1">
               <label class="text-sm font-bold text-slate-800 flex items-center space-x-2">

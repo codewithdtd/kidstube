@@ -61,6 +61,7 @@ class FlywaySchemaAndDataTest {
         assertThat(setting.getBedtimeStart()).isEqualTo(LocalTime.of(21, 0, 0));
         assertThat(setting.getBedtimeEnd()).isEqualTo(LocalTime.of(7, 0, 0));
         assertThat(setting.getIsLocked()).isFalse();
+        assertThat(setting.getUiMode()).isEqualTo("KIDS_WORLD");
     }
 
     @Test

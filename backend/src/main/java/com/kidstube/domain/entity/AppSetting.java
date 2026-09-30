@@ -28,6 +28,9 @@ public class AppSetting {
     @Column(name = "is_locked")
     private Boolean isLocked;
 
+    @Column(name = "ui_mode", length = 30)
+    private String uiMode;
+
     @Column(name = "updated_at", columnDefinition = "TIMESTAMP WITH TIME ZONE")
     private OffsetDateTime updatedAt;
 
@@ -36,11 +39,17 @@ public class AppSetting {
 
     public AppSetting(Integer id, Integer dailyTimeLimitMinutes, LocalTime bedtimeStart, LocalTime bedtimeEnd,
                       Boolean isLocked, OffsetDateTime updatedAt) {
+        this(id, dailyTimeLimitMinutes, bedtimeStart, bedtimeEnd, isLocked, "KIDS_WORLD", updatedAt);
+    }
+
+    public AppSetting(Integer id, Integer dailyTimeLimitMinutes, LocalTime bedtimeStart, LocalTime bedtimeEnd,
+                      Boolean isLocked, String uiMode, OffsetDateTime updatedAt) {
         this.id = id;
         this.dailyTimeLimitMinutes = dailyTimeLimitMinutes;
         this.bedtimeStart = bedtimeStart;
         this.bedtimeEnd = bedtimeEnd;
         this.isLocked = isLocked;
+        this.uiMode = (uiMode != null && !uiMode.isBlank()) ? uiMode : "KIDS_WORLD";
         this.updatedAt = updatedAt;
     }
 
@@ -84,6 +93,14 @@ public class AppSetting {
         this.isLocked = isLocked;
     }
 
+    public String getUiMode() {
+        return uiMode;
+    }
+
+    public void setUiMode(String uiMode) {
+        this.uiMode = uiMode;
+    }
+
     public OffsetDateTime getUpdatedAt() {
         return updatedAt;
     }
@@ -102,6 +119,7 @@ public class AppSetting {
         private LocalTime bedtimeStart;
         private LocalTime bedtimeEnd;
         private Boolean isLocked;
+        private String uiMode = "KIDS_WORLD";
         private OffsetDateTime updatedAt;
 
         public Builder id(Integer id) {
@@ -129,13 +147,18 @@ public class AppSetting {
             return this;
         }
 
+        public Builder uiMode(String uiMode) {
+            this.uiMode = uiMode;
+            return this;
+        }
+
         public Builder updatedAt(OffsetDateTime updatedAt) {
             this.updatedAt = updatedAt;
             return this;
         }
 
         public AppSetting build() {
-            return new AppSetting(id, dailyTimeLimitMinutes, bedtimeStart, bedtimeEnd, isLocked, updatedAt);
+            return new AppSetting(id, dailyTimeLimitMinutes, bedtimeStart, bedtimeEnd, isLocked, uiMode, updatedAt);
         }
     }
 

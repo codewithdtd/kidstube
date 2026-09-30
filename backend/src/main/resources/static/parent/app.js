@@ -445,9 +445,68 @@ async function loadSettings() {
     document.getElementById('input-bedtime-start').value = s.bedtimeStart;
     document.getElementById('input-bedtime-end').value = s.bedtimeEnd;
     document.getElementById('input-is-locked').checked = Boolean(s.isLocked);
+    renderUiModeState(s.uiMode || 'KIDS_WORLD');
   } catch (err) {
     console.error(err);
   }
+}
+
+let currentUiMode = 'KIDS_WORLD';
+
+function renderUiModeState(mode) {
+  currentUiMode = (mode === 'YOUTUBE') ? 'YOUTUBE' : 'KIDS_WORLD';
+  const isKidsWorld = currentUiMode === 'KIDS_WORLD';
+
+  const badge = document.getElementById('badge-current-ui-mode');
+  if (badge) {
+    badge.textContent = isKidsWorld ? '🚀 KidsZone (6-7 tuổi)' : '📺 YouTube Kids';
+    badge.className = isKidsWorld
+      ? 'text-[11px] text-indigo-700 bg-indigo-100 border border-indigo-200 px-2.5 py-0.5 rounded-full font-bold'
+      : 'text-[11px] text-sky-700 bg-sky-100 border border-sky-200 px-2.5 py-0.5 rounded-full font-bold';
+  }
+
+  const headerIcon = document.getElementById('header-uimode-icon');
+  const headerText = document.getElementById('header-uimode-text');
+  if (headerIcon && headerText) {
+    headerIcon.textContent = isKidsWorld ? '🚀' : '📺';
+    headerText.textContent = isKidsWorld ? 'KidsZone' : 'YouTube Kids';
+  }
+
+  const btnKw = document.getElementById('btn-mode-kidsworld');
+  const btnYt = document.getElementById('btn-mode-youtube');
+  const checkKw = document.getElementById('check-kidsworld');
+  const checkYt = document.getElementById('check-youtube');
+
+  if (btnKw && btnYt) {
+    if (isKidsWorld) {
+      btnKw.className = 'p-3.5 rounded-xl border-2 transition text-left relative flex flex-col justify-between bg-white border-indigo-500 shadow-sm cursor-pointer';
+      btnYt.className = 'p-3.5 rounded-xl border-2 transition text-left relative flex flex-col justify-between bg-white border-slate-200 hover:border-slate-300 cursor-pointer';
+      if (checkKw) checkKw.classList.remove('hidden');
+      if (checkYt) checkYt.classList.add('hidden');
+    } else {
+      btnYt.className = 'p-3.5 rounded-xl border-2 transition text-left relative flex flex-col justify-between bg-white border-sky-500 shadow-sm cursor-pointer';
+      btnKw.className = 'p-3.5 rounded-xl border-2 transition text-left relative flex flex-col justify-between bg-white border-slate-200 hover:border-slate-300 cursor-pointer';
+      if (checkYt) checkYt.classList.remove('hidden');
+      if (checkKw) checkKw.classList.add('hidden');
+    }
+  }
+}
+
+async function handleSelectUiMode(mode) {
+  try {
+    const res = await fetch(`/api/v1/parent/settings/ui-mode?uiMode=${mode}`, { method: 'PATCH' });
+    if (!res.ok) throw new Error('Không thể cập nhật giao diện ứng dụng');
+    const s = await res.json();
+    renderUiModeState(s.uiMode || mode);
+    showToast(mode === 'KIDS_WORLD' ? 'Đã đổi sang giao diện 🌈 Thế Giới Kỳ Diệu cho bé!' : 'Đã đổi sang giao diện 📺 YouTube Kids cho bé!');
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+
+async function toggleQuickUiMode() {
+  const nextMode = currentUiMode === 'KIDS_WORLD' ? 'YOUTUBE' : 'KIDS_WORLD';
+  await handleSelectUiMode(nextMode);
 }
 
 function updateLimitDisplay(val) {
@@ -506,7 +565,8 @@ async function handleSaveSettings(e) {
       dailyLimitMinutes: isNaN(dailyTimeLimitMinutes) ? 45 : dailyTimeLimitMinutes,
       bedtimeStart,
       bedtimeEnd,
-      isLocked
+      isLocked,
+      uiMode: currentUiMode
     };
     const res = await fetch('/api/v1/parent/settings', {
       method: 'PUT',

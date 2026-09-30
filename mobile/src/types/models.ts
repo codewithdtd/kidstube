@@ -68,6 +68,7 @@ export interface ScreenTimeStatus {
   isBedtime: boolean;
   lockReason: 'NONE' | 'MANUAL_LOCK' | 'BEDTIME' | 'TIME_LIMIT_EXCEEDED' | string | null;
   message?: string | null;
+  uiMode?: 'YOUTUBE' | 'KIDS_WORLD' | string;
 }
 
 /**

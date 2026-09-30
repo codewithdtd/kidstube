@@ -17,10 +17,13 @@ import { ShortVideo } from '../../../types/models';
 import { MOCK_SHORTS } from '../data/mockShorts';
 import { ShortsVideoItem } from '../components/ShortsVideoItem';
 import { YouTubeBottomBar } from '../../../components/YouTubeBottomBar';
+import { KidsWorldBottomBar } from '../../kidsworld/components/KidsWorldBottomBar';
+import { useUiMode } from '../../../context/UiModeContext';
 import { fetchAppStatus, fetchShorts, recordWatchHistory } from '../../../services/apiClient';
 import { CommentsBottomSheet } from '../../comments/components/CommentsBottomSheet';
 
 export const ShortsScreen: React.FC<ShortsScreenProps> = ({ navigation }) => {
+  const { isKidsWorld } = useUiMode();
   const { width: windowWidth, height: windowHeight } = useWindowDimensions();
   const insets = useSafeAreaInsets();
 
@@ -161,7 +164,16 @@ export const ShortsScreen: React.FC<ShortsScreenProps> = ({ navigation }) => {
 
       {/* Top Floating Bar */}
       <View style={[styles.topBar, { paddingTop: Math.max(insets.top, 14) }]}>
-        <Text style={styles.headerTitle}>Shorts</Text>
+        <View style={styles.topLeftRow}>
+          <TouchableOpacity
+            style={styles.backBtn}
+            activeOpacity={0.7}
+            onPress={() => navigation.navigate('Home')}
+          >
+            <MaterialCommunityIcons name="arrow-left" size={24} color="#ffffff" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Shorts</Text>
+        </View>
         <View style={styles.topRightActions}>
           {/* Sound Mode Toggle Chip */}
           <TouchableOpacity
@@ -259,14 +271,25 @@ export const ShortsScreen: React.FC<ShortsScreenProps> = ({ navigation }) => {
       </View>
 
       {/* Bottom Navigation Bar */}
-      <YouTubeBottomBar
-        activeTab="shorts"
-        onSelectTab={(tab) => {
-          if (tab === 'home') {
-            navigation.navigate('Home');
-          }
-        }}
-      />
+      {isKidsWorld ? (
+        <KidsWorldBottomBar
+          activeTab="shorts"
+          onSelectTab={(tab) => {
+            if (tab === 'home') {
+              navigation.navigate('Home');
+            }
+          }}
+        />
+      ) : (
+        <YouTubeBottomBar
+          activeTab="shorts"
+          onSelectTab={(tab) => {
+            if (tab === 'home') {
+              navigation.navigate('Home');
+            }
+          }}
+        />
+      )}
 
       {/* Interactive Kids Comments Bottom Sheet for Shorts */}
       {shorts[activeIndex] && (
@@ -308,6 +331,19 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingBottom: 8,
+  },
+  topLeftRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  backBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(0, 0, 0, 0.45)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   headerTitle: {
     color: '#ffffff',

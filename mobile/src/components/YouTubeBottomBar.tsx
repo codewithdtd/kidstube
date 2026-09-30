@@ -7,13 +7,11 @@ import { useAppTheme } from '../context/ThemeContext';
 interface YouTubeBottomBarProps {
   activeTab?: string;
   onSelectTab?: (tab: string) => void;
-  onOpenParentGate?: () => void;
 }
 
 export const YouTubeBottomBar: React.FC<YouTubeBottomBarProps> = ({
   activeTab = 'home',
   onSelectTab,
-  onOpenParentGate,
 }) => {
   const { colors } = useAppTheme();
   const insets = useSafeAreaInsets();
@@ -75,15 +73,11 @@ export const YouTubeBottomBar: React.FC<YouTubeBottomBarProps> = ({
       </TouchableOpacity>
 
       {/* Tab 3: (+) Create/Upload (Inert - Does nothing) */}
-      <TouchableOpacity
-        style={styles.tabItem}
-        activeOpacity={0.7}
-        onPress={() => onOpenParentGate?.()}
-      >
+      <View style={styles.tabItem}>
         <View style={[styles.createBtn, { borderColor: colors.textPrimary }]}>
           <MaterialCommunityIcons name="plus" size={24} color={colors.textPrimary} />
         </View>
-      </TouchableOpacity>
+      </View>
 
       {/* Tab 4: Subscriptions */}
       <TouchableOpacity
@@ -99,17 +93,13 @@ export const YouTubeBottomBar: React.FC<YouTubeBottomBarProps> = ({
         <Text style={[styles.tabLabel, { color: colors.bottomNavInactive }]}>Đăng ký</Text>
       </TouchableOpacity>
 
-      {/* Tab 5: You (Inert - Does nothing) */}
-      <TouchableOpacity
-        style={styles.tabItem}
-        activeOpacity={0.7}
-        onPress={() => onOpenParentGate?.()}
-      >
+      {/* Tab 5: You (Inert - Does nothing when pressed) */}
+      <View style={styles.tabItem}>
         <View style={[styles.avatarCircle, { backgroundColor: colors.youtubeRed }]}>
           <Text style={styles.avatarText}>K</Text>
         </View>
         <Text style={[styles.tabLabel, { color: colors.bottomNavInactive }]}>Bạn</Text>
-      </TouchableOpacity>
+      </View>
     </View>
   );
 };

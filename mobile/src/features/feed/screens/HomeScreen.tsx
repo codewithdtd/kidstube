@@ -15,18 +15,42 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { HomeScreenProps } from '../../../types/navigation';
 import { Video, Category } from '../../../types/models';
 import { useAppTheme } from '../../../context/ThemeContext';
+import { useUiMode } from '../../../context/UiModeContext';
 import { YouTubeHeader } from '../../../components/YouTubeHeader';
 import { YouTubeBottomBar } from '../../../components/YouTubeBottomBar';
 import { YouTubeVideoCard } from '../components/YouTubeVideoCard';
+import { KidsWorldHeader } from '../../kidsworld/components/KidsWorldHeader';
+import { KidsWorldVideoCard } from '../../kidsworld/components/KidsWorldVideoCard';
+import { KidsWorldBottomBar } from '../../kidsworld/components/KidsWorldBottomBar';
+import { ParentPinModal } from '../../../components/ParentPinModal';
 import { fetchVideos, fetchCategories, fetchAppStatus } from '../../../services/apiClient';
+
+const KIDS_CATEGORY_ICONS: Record<number, string> = {
+  0: '⚡',
+  1: '🎮',
+  2: '🎵',
+  3: '🚀',
+  4: '🐾',
+  5: '🎨',
+};
+
+const KIDS_CATEGORY_COLORS = [
+  { bg: '#EEF2FF', activeBg: '#6366F1', text: '#4338CA' },
+  { bg: '#F0F9FF', activeBg: '#0284C7', text: '#0369A1' },
+  { bg: '#ECFDF5', activeBg: '#059669', text: '#047857' },
+  { bg: '#FFFBEB', activeBg: '#D97706', text: '#B45309' },
+  { bg: '#FFF1F2', activeBg: '#E11D48', text: '#BE123C' },
+];
 
 export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   const { colors } = useAppTheme();
+  const { isKidsWorld } = useUiMode();
   const [selectedCategory, setSelectedCategory] = useState<number>(0);
   const [categories, setCategories] = useState<Category[]>([]);
   const [videos, setVideos] = useState<Video[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
+  const [isPinModalVisible, setIsPinModalVisible] = useState<boolean>(false);
 
   const loadInitialData = useCallback(async () => {
     try {
@@ -72,95 +96,171 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
     navigation.navigate('Player', { video });
   };
 
+  const currentBgColor = isKidsWorld ? '#F8FAFC' : colors.background;
 
   return (
-    <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]} edges={['top', 'left', 'right']}>
-      <YouTubeHeader
-        onSearchPress={() => Alert.alert('Tìm kiếm', 'Tìm kiếm video thiếu nhi an toàn')}
-      />
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: currentBgColor }]} edges={['top', 'left', 'right']}>
+      {/* Dynamic Header based on active UI Mode */}
+      {isKidsWorld ? (
+        <KidsWorldHeader
+          onSearchPress={() => Alert.alert('Tìm kiếm', 'Bé muốn xem video gì nào?')}
+          onParentPinPress={() => setIsPinModalVisible(true)}
+        />
+      ) : (
+        <YouTubeHeader
+          onSearchPress={() => Alert.alert('Tìm kiếm', 'Tìm kiếm video thiếu nhi an toàn')}
+          onParentPinPress={() => setIsPinModalVisible(true)}
+        />
+      )}
 
-      <View style={[styles.chipsContainer, { backgroundColor: colors.background }]}>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.chipsScroll}
-        >
-          <TouchableOpacity
-            style={[styles.exploreBtn, { backgroundColor: colors.chipInactiveBg }]}
-            onPress={() => Alert.alert('Khám phá', 'Khám phá video được duyệt dành cho bé')}
+      {/* Category Selection Bar */}
+      {isKidsWorld ? (
+        <View style={styles.kidsCategoriesContainer}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.kidsCategoriesScroll}
           >
-            <MaterialCommunityIcons name="compass-outline" size={20} color={colors.textPrimary} />
-          </TouchableOpacity>
-
-          <View style={[styles.chipDivider, { backgroundColor: colors.border }]} />
-
-          {/* "All" Category Chip */}
-          <TouchableOpacity
-            style={[
-              styles.chip,
-              { backgroundColor: selectedCategory === 0 ? colors.chipActiveBg : colors.chipInactiveBg },
-            ]}
-            activeOpacity={0.8}
-            onPress={() => setSelectedCategory(0)}
-          >
-            <Text
+            <TouchableOpacity
               style={[
-                styles.chipText,
+                styles.kidsCatPill,
                 {
-                  color: selectedCategory === 0 ? colors.chipActiveText : colors.chipInactiveText,
-                  fontWeight: selectedCategory === 0 ? '700' : '500',
+                  backgroundColor: selectedCategory === 0 ? '#6366F1' : '#EEF2FF',
+                  borderColor: '#6366F1',
                 },
               ]}
+              activeOpacity={0.8}
+              onPress={() => setSelectedCategory(0)}
             >
-              Tất cả
-            </Text>
-          </TouchableOpacity>
-
-          {/* Dynamic Categories from Backend */}
-          {categories.map((cat) => {
-            const isActive = selectedCategory === cat.id;
-            return (
-              <TouchableOpacity
-                key={cat.id}
+              <Text style={styles.kidsCatEmoji}>⚡</Text>
+              <Text
                 style={[
-                  styles.chip,
-                  { backgroundColor: isActive ? colors.chipActiveBg : colors.chipInactiveBg },
+                  styles.kidsCatText,
+                  { color: selectedCategory === 0 ? '#FFFFFF' : '#4338CA' },
                 ]}
-                activeOpacity={0.8}
-                onPress={() => setSelectedCategory(cat.id)}
               >
-                <Text
+                Tất Cả
+              </Text>
+            </TouchableOpacity>
+
+            {categories.map((cat, idx) => {
+              const isActive = selectedCategory === cat.id;
+              const colorTheme = KIDS_CATEGORY_COLORS[(idx + 1) % KIDS_CATEGORY_COLORS.length];
+              const icon = KIDS_CATEGORY_ICONS[cat.id] || KIDS_CATEGORY_ICONS[(idx % 5) + 1] || '🎈';
+
+              return (
+                <TouchableOpacity
+                  key={cat.id}
                   style={[
-                    styles.chipText,
+                    styles.kidsCatPill,
                     {
-                      color: isActive ? colors.chipActiveText : colors.chipInactiveText,
-                      fontWeight: isActive ? '700' : '500',
+                      backgroundColor: isActive ? colorTheme.activeBg : colorTheme.bg,
+                      borderColor: colorTheme.activeBg,
                     },
                   ]}
+                  activeOpacity={0.8}
+                  onPress={() => setSelectedCategory(cat.id)}
                 >
-                  {cat.name}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </ScrollView>
-      </View>
+                  <Text style={styles.kidsCatEmoji}>{icon}</Text>
+                  <Text
+                    style={[
+                      styles.kidsCatText,
+                      { color: isActive ? '#FFFFFF' : colorTheme.text },
+                    ]}
+                  >
+                    {cat.name}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        </View>
+      ) : (
+        <View style={[styles.chipsContainer, { backgroundColor: colors.background }]}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.chipsScroll}
+          >
+            <TouchableOpacity
+              style={[styles.exploreBtn, { backgroundColor: colors.chipInactiveBg }]}
+              onPress={() => Alert.alert('Khám phá', 'Khám phá video được duyệt dành cho bé')}
+            >
+              <MaterialCommunityIcons name="compass-outline" size={20} color={colors.textPrimary} />
+            </TouchableOpacity>
+
+            <View style={[styles.chipDivider, { backgroundColor: colors.border }]} />
+
+            <TouchableOpacity
+              style={[
+                styles.chip,
+                { backgroundColor: selectedCategory === 0 ? colors.chipActiveBg : colors.chipInactiveBg },
+              ]}
+              activeOpacity={0.8}
+              onPress={() => setSelectedCategory(0)}
+            >
+              <Text
+                style={[
+                  styles.chipText,
+                  {
+                    color: selectedCategory === 0 ? colors.chipActiveText : colors.chipInactiveText,
+                    fontWeight: selectedCategory === 0 ? '700' : '500',
+                  },
+                ]}
+              >
+                Tất cả
+              </Text>
+            </TouchableOpacity>
+
+            {categories.map((cat) => {
+              const isActive = selectedCategory === cat.id;
+              return (
+                <TouchableOpacity
+                  key={cat.id}
+                  style={[
+                    styles.chip,
+                    { backgroundColor: isActive ? colors.chipActiveBg : colors.chipInactiveBg },
+                  ]}
+                  activeOpacity={0.8}
+                  onPress={() => setSelectedCategory(cat.id)}
+                >
+                  <Text
+                    style={[
+                      styles.chipText,
+                      {
+                        color: isActive ? colors.chipActiveText : colors.chipInactiveText,
+                        fontWeight: isActive ? '700' : '500',
+                      },
+                    ]}
+                  >
+                    {cat.name}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        </View>
+      )}
 
       {/* Video Grid or Loading State */}
       {isLoading ? (
         <View style={styles.centerContainer}>
-          <ActivityIndicator size="large" color={colors.youtubeRed} />
-          <Text style={[styles.loadingText, { color: colors.textSecondary }]}>
-            Đang tải video cho bé...
+          <ActivityIndicator size="large" color={isKidsWorld ? '#F59E0B' : colors.youtubeRed} />
+          <Text style={[styles.loadingText, { color: isKidsWorld ? '#B45309' : colors.textSecondary }]}>
+            {isKidsWorld ? 'Đang tải thế giới video kỳ diệu cho bé...' : 'Đang tải video cho bé...'}
           </Text>
         </View>
       ) : videos.length === 0 ? (
         <View style={styles.centerContainer}>
-          <MaterialCommunityIcons name="video-vintage" size={54} color={colors.textSecondary} />
-          <Text style={[styles.emptyTitle, { color: colors.textPrimary }]}>
+          <MaterialCommunityIcons
+            name={isKidsWorld ? 'star-shooting-outline' : 'video-vintage'}
+            size={54}
+            color={isKidsWorld ? '#F59E0B' : colors.textSecondary}
+          />
+          <Text style={[styles.emptyTitle, { color: isKidsWorld ? '#1E293B' : colors.textPrimary }]}>
             Chưa có video trong danh mục này
           </Text>
-          <Text style={[styles.emptySubtitle, { color: colors.textSecondary }]}>
+          <Text style={[styles.emptySubtitle, { color: isKidsWorld ? '#64748B' : colors.textSecondary }]}>
             Ba mẹ hãy mở Cổng Quản Lý để nạp thêm video hay cho bé nhé!
           </Text>
         </View>
@@ -176,27 +276,56 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
             <RefreshControl
               refreshing={isRefreshing}
               onRefresh={handleRefresh}
-              tintColor={colors.youtubeRed}
-              colors={[colors.youtubeRed]}
+              tintColor={isKidsWorld ? '#F59E0B' : colors.youtubeRed}
+              colors={[isKidsWorld ? '#F59E0B' : colors.youtubeRed]}
             />
           }
-          renderItem={({ item }) => (
-            <YouTubeVideoCard
-              video={item}
-              onPress={handleVideoPress}
-              onMorePress={(video) => Alert.alert('KidsTube', video.title)}
-            />
-          )}
+          renderItem={({ item }) =>
+            isKidsWorld ? (
+              <KidsWorldVideoCard
+                video={item}
+                onPress={handleVideoPress}
+              />
+            ) : (
+              <YouTubeVideoCard
+                video={item}
+                onPress={handleVideoPress}
+                onMorePress={(video) => Alert.alert('KidsTube', video.title)}
+              />
+            )
+          }
         />
       )}
 
-      <YouTubeBottomBar
-        activeTab="home"
-        onSelectTab={(tab) => {
-          if (tab === 'shorts') {
-            navigation.navigate('Shorts');
-          }
-        }}
+      {/* Dynamic Bottom Bar based on UI Mode */}
+      {isKidsWorld ? (
+        <KidsWorldBottomBar
+          activeTab="home"
+          onSelectTab={(tab) => {
+            if (tab === 'shorts') {
+              navigation.navigate('Shorts');
+            } else if (tab === 'home') {
+              setSelectedCategory(0);
+            }
+          }}
+        />
+      ) : (
+        <YouTubeBottomBar
+          activeTab="home"
+          onSelectTab={(tab) => {
+            if (tab === 'shorts') {
+              navigation.navigate('Shorts');
+            } else if (tab === 'home') {
+              setSelectedCategory(0);
+            }
+          }}
+        />
+      )}
+
+      {/* Parent PIN Modal */}
+      <ParentPinModal
+        visible={isPinModalVisible}
+        onClose={() => setIsPinModalVisible(false)}
       />
     </SafeAreaView>
   );
@@ -222,6 +351,39 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   chipText: { fontSize: 13 },
+
+  // Kids Wonderland Playful Categories
+  kidsCategoriesContainer: {
+    paddingVertical: 10,
+    backgroundColor: '#FFFDF5',
+  },
+  kidsCategoriesScroll: {
+    paddingHorizontal: 12,
+    alignItems: 'center',
+    gap: 8,
+  },
+  kidsCatPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 13,
+    height: 36,
+    borderRadius: 18,
+    borderWidth: 1.5,
+    gap: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  kidsCatEmoji: {
+    fontSize: 14,
+  },
+  kidsCatText: {
+    fontSize: 12.5,
+    fontWeight: '800',
+  },
+
   listContent: { paddingTop: 4, paddingBottom: 8 },
   columnWrapper: { paddingHorizontal: 6, justifyContent: 'space-between' },
   centerContainer: {
