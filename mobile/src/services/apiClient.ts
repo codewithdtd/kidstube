@@ -34,14 +34,15 @@ const getApiBaseUrl = (): string => {
     return 'http://localhost:8080';
   }
 
-  // Fallback to computer LAN IP on local Wi-Fi for Expo Go physical devices
-  return 'http://192.168.1.26:8080';
+  // Production cloud fallback if neither env nor local Metro is detected
+  return 'https://kidstube-api-f776.onrender.com';
 };
 
 export const API_BASE_URL = getApiBaseUrl();
 console.log(`[KidsTube API] Active Base URL -> ${API_BASE_URL}`);
 
-const REQUEST_TIMEOUT_MS = 3500;
+// Resilient timeout for Cloud (Render/Koyeb) & Local LAN requests
+const REQUEST_TIMEOUT_MS = 10000;
 
 // Helper to fetch with timeout
 async function fetchWithTimeout(url: string, options: RequestInit = {}): Promise<Response> {
@@ -94,6 +95,7 @@ const mapVideosToShorts = (videos: Video[]): ShortVideo[] => {
     title: v.title,
     channelTitle: v.channelTitle || 'KidsTube Creator',
     channelAvatarUrl: 'https://yt3.googleusercontent.com/ytc/AIdro_kXJp0=s176-c-k-c0x00ffffff-no-rj',
+    thumbnailUrl: v.thumbnailUrl || `https://i.ytimg.com/vi/${v.youtubeVideoId}/hqdefault.jpg`,
     likesCount: 1200 + (v.id * 137) % 5000,
     commentsCount: 30 + (v.id * 23) % 200,
     soundTitle: 'Âm thanh gốc - ' + (v.channelTitle || 'KidsTube'),
@@ -104,8 +106,8 @@ const mapVideosToShorts = (videos: Video[]): ShortVideo[] => {
  * Fetch shorts video feed for kid (vertical short-form content).
  * Resilient multi-tier strategy:
  * 1. Queries `/api/v1/videos/shorts` (dedicated Shorts endpoint).
- * 2. If endpoint fails or returns empty, queries `/api/v1/videos` and filters for Shorts (#shorts, duration <= 90s, or all active DB videos).
- * 3. Falls back to verified MOCK_SHORTS only if backend is completely unreachable.
+ * 2. If endpoint fails or returns empty, queries `/api/v1/videos` and filters strictly for genuine Shorts (#shorts, duration <= 60s).
+ * 3. Falls back to verified 9:16 vertical MOCK_SHORTS only if backend is completely unreachable or no true shorts found.
  */
 export async function fetchShorts(): Promise<ShortVideo[]> {
   // Strategy 1: Dedicated /api/v1/videos/shorts
@@ -122,28 +124,29 @@ export async function fetchShorts(): Promise<ShortVideo[]> {
     console.warn('[API] /api/v1/videos/shorts unavailable, falling back to general video feed:', e);
   }
 
-  // Strategy 2: Fallback to general DB videos /api/v1/videos
+  // Strategy 2: Fallback to general DB videos /api/v1/videos with strict vertical Shorts filter
   try {
     const res = await fetchWithTimeout(`${API_BASE_URL}/api/v1/videos`);
     if (res.ok) {
       const allVideos: Video[] = await res.json();
       if (allVideos && allVideos.length > 0) {
-        // Filter videos with #shorts in title, or short duration (<= 90s)
+        // Filter strictly for videos that are genuine Shorts (#shorts in title or duration <= 60s or marked isShort)
         const detectedShorts = allVideos.filter(
           (v) =>
             v.title.toLowerCase().includes('short') ||
-            (v.durationSeconds && v.durationSeconds > 0 && v.durationSeconds <= 90)
+            (v.durationSeconds && v.durationSeconds > 0 && v.durationSeconds <= 60)
         );
-        const candidates = detectedShorts.length > 0 ? detectedShorts : allVideos;
-        console.log(`[API] Loaded ${candidates.length} DB videos for Shorts feed`);
-        return mapVideosToShorts(candidates);
+        if (detectedShorts.length > 0) {
+          console.log(`[API] Loaded ${detectedShorts.length} verified DB shorts for Shorts feed`);
+          return mapVideosToShorts(detectedShorts);
+        }
       }
     }
   } catch (e) {
     console.warn('[API] Could not fetch general videos for shorts fallback:', e);
   }
 
-  // Strategy 3: Verified safe mock shorts
+  // Strategy 3: Verified safe vertical 9:16 mock shorts
   console.log('[API] Using verified fallback MOCK_SHORTS');
   return MOCK_SHORTS;
 }

@@ -34,6 +34,7 @@ export interface ShortVideo {
   title: string;
   channelTitle: string;
   channelAvatarUrl?: string;
+  thumbnailUrl?: string;
   likesCount: number;
   commentsCount: number;
   soundTitle?: string;

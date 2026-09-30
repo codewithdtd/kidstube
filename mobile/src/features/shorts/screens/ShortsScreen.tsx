@@ -146,7 +146,7 @@ export const ShortsScreen: React.FC<ShortsScreenProps> = ({ navigation }) => {
   ).current;
 
   const viewabilityConfig = useRef({
-    itemVisiblePercentThreshold: 60,
+    itemVisiblePercentThreshold: 80,
   }).current;
 
   const handleScrollSync = (offsetY: number) => {
@@ -227,6 +227,10 @@ export const ShortsScreen: React.FC<ShortsScreenProps> = ({ navigation }) => {
         })}
         onViewableItemsChanged={onViewableItemsChanged}
         viewabilityConfig={viewabilityConfig}
+        removeClippedSubviews={Platform.OS === 'android'}
+        windowSize={3}
+        initialNumToRender={1}
+        maxToRenderPerBatch={1}
         onMomentumScrollEnd={(e) => handleScrollSync(e.nativeEvent.contentOffset.y)}
         onScroll={(e) => {
           if (Platform.OS === 'web') {

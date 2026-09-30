@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Platform, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Platform, Alert, Image } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { ShortVideo } from '../../../types/models';
@@ -65,6 +65,8 @@ export const ShortsVideoItem: React.FC<ShortsVideoItemProps> = ({
         (function() {
           try {
             if (window.player && typeof window.player.${command} === 'function') {
+              if ('${command}' === 'pauseVideo') { window.userPaused = true; }
+              if ('${command}' === 'playVideo') { window.userPaused = false; }
               window.player.${command}();
               if ('${command}' === 'unMute' && typeof window.player.setVolume === 'function') {
                 window.player.setVolume(100);
@@ -94,21 +96,15 @@ export const ShortsVideoItem: React.FC<ShortsVideoItemProps> = ({
     }
   };
 
-  // Sync play state and auto-unmute when item becomes active
+  // Sync play state and mute mode when item becomes active
   useEffect(() => {
     if (isActive) {
       setIsPlaying(true);
       sendPlayerCommand('playVideo');
-      if (!isMuted) {
-        sendPlayerCommand('unMute');
-        const t1 = setTimeout(() => sendPlayerCommand('unMute'), 300);
-        const t2 = setTimeout(() => sendPlayerCommand('unMute'), 800);
-        return () => {
-          clearTimeout(t1);
-          clearTimeout(t2);
-        };
-      } else {
+      if (isMuted) {
         sendPlayerCommand('mute');
+      } else {
+        sendPlayerCommand('unMute');
       }
     } else {
       setIsPlaying(false);
@@ -153,6 +149,9 @@ export const ShortsVideoItem: React.FC<ShortsVideoItemProps> = ({
         height: 100%;
         background-color: #000000;
         overflow: hidden;
+        display: flex;
+        align-items: center;
+        justify-content: center;
       }
       #player {
         position: absolute;
@@ -161,6 +160,11 @@ export const ShortsVideoItem: React.FC<ShortsVideoItemProps> = ({
         width: 100%;
         height: 100%;
       }
+      iframe {
+        width: 100% !important;
+        height: 100% !important;
+        border: none;
+      }
     </style>
   </head>
   <body>
@@ -168,6 +172,7 @@ export const ShortsVideoItem: React.FC<ShortsVideoItemProps> = ({
     <script src="https://www.youtube.com/iframe_api"></script>
     <script>
       var player;
+      var userPaused = false;
       function onYouTubeIframeAPIReady() {
         player = new YT.Player('player', {
           width: '100%',
@@ -184,7 +189,8 @@ export const ShortsVideoItem: React.FC<ShortsVideoItemProps> = ({
             enablejsapi: 1,
             iv_load_policy: 3,
             loop: 1,
-            playlist: '${short.youtubeVideoId}'
+            playlist: '${short.youtubeVideoId}',
+            fs: 0
           },
           events: {
             onReady: function(e) {
@@ -199,10 +205,11 @@ export const ShortsVideoItem: React.FC<ShortsVideoItemProps> = ({
               e.target.playVideo();
             },
             onStateChange: function(e) {
-              if (e.data === 1 && ${!isMuted}) {
+              // If video paused unexpectedly during initial autoplay without user gesture, resume smoothly
+              if (e.data === 2 && !userPaused) {
                 try {
-                  e.target.unMute();
-                  if (typeof e.target.setVolume === 'function') e.target.setVolume(100);
+                  e.target.mute();
+                  e.target.playVideo();
                 } catch(err) {}
               }
             }
@@ -218,8 +225,14 @@ export const ShortsVideoItem: React.FC<ShortsVideoItemProps> = ({
         try {
           var msg = typeof raw === 'string' ? JSON.parse(raw) : raw;
           if (!window.player) return;
-          if (msg.func === 'playVideo') window.player.playVideo();
-          if (msg.func === 'pauseVideo') window.player.pauseVideo();
+          if (msg.func === 'playVideo') {
+            userPaused = false;
+            window.player.playVideo();
+          }
+          if (msg.func === 'pauseVideo') {
+            userPaused = true;
+            window.player.pauseVideo();
+          }
           if (msg.func === 'mute') window.player.mute();
           if (msg.func === 'unMute') {
             window.player.unMute();
@@ -236,13 +249,26 @@ export const ShortsVideoItem: React.FC<ShortsVideoItemProps> = ({
   return (
     <View style={[styles.container, { width: itemWidth, height: itemHeight }]}>
       <View style={styles.playerWrapper}>
-        {Platform.OS === 'web' ? (
+        {!isActive ? (
+          // Lightweight thumbnail window: Saves ~100MB RAM per item, prevents Android OOM crashes!
+          <View style={styles.thumbnailWrapper}>
+            <Image
+              source={{ uri: short.thumbnailUrl || `https://i.ytimg.com/vi/${short.youtubeVideoId}/hqdefault.jpg` }}
+              style={styles.thumbnailImage}
+              resizeMode="cover"
+            />
+            <View style={styles.thumbnailOverlay} />
+            <View style={styles.idlePlayBadge}>
+              <MaterialCommunityIcons name="play-circle" size={60} color="rgba(255, 255, 255, 0.75)" />
+            </View>
+          </View>
+        ) : Platform.OS === 'web' ? (
           <iframe
             ref={iframeRef}
             key={short.youtubeVideoId}
-            src={`https://www.youtube-nocookie.com/embed/${short.youtubeVideoId}?autoplay=${
-              isActive ? 1 : 0
-            }&mute=${isMuted ? 1 : 0}&controls=0&playsinline=1&loop=1&playlist=${short.youtubeVideoId}&rel=0&modestbranding=1&enablejsapi=1`}
+            src={`https://www.youtube-nocookie.com/embed/${short.youtubeVideoId}?autoplay=1&mute=${
+              isMuted ? 1 : 0
+            }&controls=0&playsinline=1&loop=1&playlist=${short.youtubeVideoId}&rel=0&modestbranding=1&enablejsapi=1`}
             style={{
               width: '100%',
               height: '100%',
@@ -344,6 +370,26 @@ const styles = StyleSheet.create({
     height: '100%',
     backgroundColor: '#000000',
     overflow: 'hidden',
+  },
+  thumbnailWrapper: {
+    ...StyleSheet.absoluteFill,
+    backgroundColor: '#000000',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  thumbnailImage: {
+    width: '100%',
+    height: '100%',
+  },
+  thumbnailOverlay: {
+    ...StyleSheet.absoluteFill,
+    backgroundColor: 'rgba(0, 0, 0, 0.25)',
+  },
+  idlePlayBadge: {
+    position: 'absolute',
+    alignSelf: 'center',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   webView: {
     width: '100%',
