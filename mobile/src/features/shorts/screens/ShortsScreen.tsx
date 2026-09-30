@@ -21,8 +21,9 @@ import { KidsWorldBottomBar } from '../../kidsworld/components/KidsWorldBottomBa
 import { useUiMode } from '../../../context/UiModeContext';
 import { fetchAppStatus, fetchShorts, recordWatchHistory } from '../../../services/apiClient';
 import { CommentsBottomSheet } from '../../comments/components/CommentsBottomSheet';
+import { shuffleArray } from '../../../utils/shuffle';
 
-export const ShortsScreen: React.FC<ShortsScreenProps> = ({ navigation }) => {
+export const ShortsScreen: React.FC<ShortsScreenProps> = ({ navigation, route }) => {
   const { isKidsWorld } = useUiMode();
   const { width: windowWidth, height: windowHeight } = useWindowDimensions();
   const insets = useSafeAreaInsets();
@@ -36,7 +37,8 @@ export const ShortsScreen: React.FC<ShortsScreenProps> = ({ navigation }) => {
     ? Math.min(windowWidth, Math.round((itemHeight * 9) / 16), 480)
     : windowWidth;
 
-  const [shorts, setShorts] = useState<ShortVideo[]>(MOCK_SHORTS);
+  const allShortsRef = useRef<ShortVideo[]>(MOCK_SHORTS);
+  const [shorts, setShorts] = useState<ShortVideo[]>(() => shuffleArray(MOCK_SHORTS));
   const [activeIndex, setActiveIndex] = useState<number>(0);
   const [remainingSeconds, setRemainingSeconds] = useState<number>(1800);
   const [isCommentsOpen, setIsCommentsOpen] = useState<boolean>(false);
@@ -77,12 +79,31 @@ export const ShortsScreen: React.FC<ShortsScreenProps> = ({ navigation }) => {
     }
   };
 
-  // Load real shorts feed from backend
+  const handleShuffleShorts = useCallback(() => {
+    const pool = allShortsRef.current.length > 0 ? allShortsRef.current : shorts;
+    if (pool && pool.length > 0) {
+      setShorts(shuffleArray(pool));
+      setActiveIndex(0);
+      flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
+    }
+  }, [shorts]);
+
+  // When navigated to Shorts with refresh request from tab bar
+  const refreshTimestamp = route.params?.refreshTimestamp;
+  useEffect(() => {
+    if (refreshTimestamp) {
+      handleShuffleShorts();
+    }
+  }, [refreshTimestamp, handleShuffleShorts]);
+
+  // Load real shorts feed from backend and shuffle immediately
   useEffect(() => {
     let isMounted = true;
     fetchShorts().then((data) => {
       if (isMounted && data && data.length > 0) {
-        setShorts(data);
+        allShortsRef.current = data;
+        setShorts(shuffleArray(data));
+        setActiveIndex(0);
       }
     });
     return () => {
@@ -280,7 +301,9 @@ export const ShortsScreen: React.FC<ShortsScreenProps> = ({ navigation }) => {
           activeTab="shorts"
           onSelectTab={(tab) => {
             if (tab === 'home') {
-              navigation.navigate('Home');
+              navigation.navigate('Home', { refreshTimestamp: Date.now() });
+            } else if (tab === 'shorts') {
+              handleShuffleShorts();
             }
           }}
         />
@@ -289,7 +312,9 @@ export const ShortsScreen: React.FC<ShortsScreenProps> = ({ navigation }) => {
           activeTab="shorts"
           onSelectTab={(tab) => {
             if (tab === 'home') {
-              navigation.navigate('Home');
+              navigation.navigate('Home', { refreshTimestamp: Date.now() });
+            } else if (tab === 'shorts') {
+              handleShuffleShorts();
             }
           }}
         />

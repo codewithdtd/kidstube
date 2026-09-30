@@ -2,8 +2,8 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Video } from './models';
 
 export type RootStackParamList = {
-  Home: undefined;
-  Shorts: undefined;
+  Home: { refreshTimestamp?: number } | undefined;
+  Shorts: { refreshTimestamp?: number } | undefined;
   Player: { video: Video };
   ScreenLock: { reason: string };
 };

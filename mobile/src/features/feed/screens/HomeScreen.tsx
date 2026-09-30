@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -24,6 +24,7 @@ import { KidsWorldVideoCard } from '../../kidsworld/components/KidsWorldVideoCar
 import { KidsWorldBottomBar } from '../../kidsworld/components/KidsWorldBottomBar';
 import { ParentPinModal } from '../../../components/ParentPinModal';
 import { fetchVideos, fetchCategories, fetchAppStatus } from '../../../services/apiClient';
+import { shuffleArray } from '../../../utils/shuffle';
 
 const KIDS_CATEGORY_ICONS: Record<number, string> = {
   0: '⚡',
@@ -42,7 +43,7 @@ const KIDS_CATEGORY_COLORS = [
   { bg: '#FFF1F2', activeBg: '#E11D48', text: '#BE123C' },
 ];
 
-export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
+export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation, route }) => {
   const { colors } = useAppTheme();
   const { isKidsWorld } = useUiMode();
   const [selectedCategory, setSelectedCategory] = useState<number>(0);
@@ -51,6 +52,8 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
   const [isPinModalVisible, setIsPinModalVisible] = useState<boolean>(false);
+
+  const flatListRef = useRef<FlatList<Video>>(null);
 
   const loadInitialData = useCallback(async () => {
     try {
@@ -69,7 +72,8 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   const loadVideos = useCallback(async (catId: number) => {
     try {
       const data = await fetchVideos(catId === 0 ? undefined : catId);
-      setVideos(data);
+      // Auto-shuffle video list on load to keep feed fresh for kids
+      setVideos(shuffleArray(data));
     } catch (e) {
       console.warn('Failed to load videos:', e);
     } finally {
@@ -77,6 +81,31 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
       setIsRefreshing(false);
     }
   }, []);
+
+  const handleShuffleHome = useCallback(() => {
+    setVideos((prevVideos) => shuffleArray(prevVideos));
+    flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
+  }, []);
+
+  // When navigated back to Home via bottom bar or with refresh request
+  const refreshTimestamp = route.params?.refreshTimestamp;
+  useEffect(() => {
+    if (refreshTimestamp) {
+      handleShuffleHome();
+    }
+  }, [refreshTimestamp, handleShuffleHome]);
+
+  const handleSelectTab = (tab: string) => {
+    if (tab === 'shorts') {
+      navigation.navigate('Shorts', { refreshTimestamp: Date.now() });
+    } else if (tab === 'home') {
+      if (selectedCategory !== 0) {
+        setSelectedCategory(0);
+      } else {
+        handleShuffleHome();
+      }
+    }
+  };
 
   useEffect(() => {
     loadInitialData();
@@ -266,6 +295,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
         </View>
       ) : (
         <FlatList
+          ref={flatListRef}
           data={videos}
           keyExtractor={(item) => item.id.toString()}
           numColumns={2}
@@ -301,24 +331,12 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
       {isKidsWorld ? (
         <KidsWorldBottomBar
           activeTab="home"
-          onSelectTab={(tab) => {
-            if (tab === 'shorts') {
-              navigation.navigate('Shorts');
-            } else if (tab === 'home') {
-              setSelectedCategory(0);
-            }
-          }}
+          onSelectTab={handleSelectTab}
         />
       ) : (
         <YouTubeBottomBar
           activeTab="home"
-          onSelectTab={(tab) => {
-            if (tab === 'shorts') {
-              navigation.navigate('Shorts');
-            } else if (tab === 'home') {
-              setSelectedCategory(0);
-            }
-          }}
+          onSelectTab={handleSelectTab}
         />
       )}
 
