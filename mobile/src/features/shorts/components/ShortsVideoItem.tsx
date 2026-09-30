@@ -12,6 +12,8 @@ interface ShortsVideoItemProps {
   itemWidth: number;
   isMuted?: boolean;
   onToggleMute?: () => void;
+  commentsCount?: number;
+  onOpenComments?: () => void;
 }
 
 export const ShortsVideoItem: React.FC<ShortsVideoItemProps> = ({
@@ -21,12 +23,13 @@ export const ShortsVideoItem: React.FC<ShortsVideoItemProps> = ({
   itemWidth,
   isMuted: isMutedProp,
   onToggleMute: onToggleMuteProp,
+  commentsCount,
+  onOpenComments,
 }) => {
   const [isPlaying, setIsPlaying] = useState<boolean>(true);
   // Default to false (auto unmute sound enabled) if prop is omitted
   const [internalMuted, setInternalMuted] = useState<boolean>(false);
   const isMuted = isMutedProp !== undefined ? isMutedProp : internalMuted;
-  const [isKidsLocked, setIsKidsLocked] = useState<boolean>(false);
   const [isSubscribed, setIsSubscribed] = useState<boolean>(false);
   const [showPlayStateIndicator, setShowPlayStateIndicator] = useState<boolean>(false);
 
@@ -122,7 +125,6 @@ export const ShortsVideoItem: React.FC<ShortsVideoItemProps> = ({
   }, [isMuted, isActive]);
 
   const handleTogglePlay = () => {
-    if (isKidsLocked) return;
     const nextState = !isPlaying;
     setIsPlaying(nextState);
     sendPlayerCommand(nextState ? 'playVideo' : 'pauseVideo');
@@ -137,14 +139,6 @@ export const ShortsVideoItem: React.FC<ShortsVideoItemProps> = ({
       const nextMuted = !internalMuted;
       setInternalMuted(nextMuted);
       sendPlayerCommand(nextMuted ? 'mute' : 'unMute');
-    }
-  };
-
-  const handleToggleKidsLock = () => {
-    const next = !isKidsLocked;
-    setIsKidsLocked(next);
-    if (next) {
-      Alert.alert('🔒 Khóa Màn Hình Trẻ Em', 'Các cử chỉ đã được khóa để bé không chạm nhầm.');
     }
   };
 
@@ -338,19 +332,10 @@ export const ShortsVideoItem: React.FC<ShortsVideoItemProps> = ({
         onTogglePlay={handleTogglePlay}
         isMuted={isMuted}
         onToggleMute={handleToggleMute}
-        isKidsLocked={isKidsLocked}
-        onToggleKidsLock={handleToggleKidsLock}
+        commentsCount={commentsCount}
+        onOpenComments={onOpenComments || (() => {})}
         onShare={() => Alert.alert('KidsTube', 'Đã chia sẻ video ngắn này cùng bé! 💖')}
       />
-
-      {isKidsLocked && (
-        <View style={styles.lockedOverlay}>
-          <TouchableOpacity style={styles.lockBadge} activeOpacity={0.8} onPress={handleToggleKidsLock}>
-            <MaterialCommunityIcons name="lock" size={22} color="#ffffff" />
-            <Text style={styles.lockBadgeText}>Chạm để mở khóa màn hình</Text>
-          </TouchableOpacity>
-        </View>
-      )}
     </View>
   );
 };
@@ -493,35 +478,5 @@ const styles = StyleSheet.create({
     textShadowColor: 'rgba(0, 0, 0, 0.8)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 2,
-  },
-  lockedOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.45)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    zIndex: 99,
-  },
-  lockBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(239, 68, 68, 0.9)',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 24,
-    gap: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.4,
-    shadowRadius: 4,
-    elevation: 6,
-  },
-  lockBadgeText: {
-    color: '#ffffff',
-    fontSize: 13,
-    fontWeight: '700',
   },
 });

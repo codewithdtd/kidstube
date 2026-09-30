@@ -7,8 +7,6 @@ interface YouTubeVideoPlayerProps {
   videoId: string;
   playing: boolean;
   onStateChange?: (state: string) => void;
-  isKidsLocked: boolean;
-  onToggleKidsLock: () => void;
   isEnded?: boolean;
   onReplay?: () => void;
 }
@@ -17,8 +15,6 @@ export const YouTubeVideoPlayer: React.FC<YouTubeVideoPlayerProps> = ({
   videoId,
   playing,
   onStateChange,
-  isKidsLocked,
-  onToggleKidsLock,
   isEnded = false,
   onReplay,
 }) => {
@@ -102,20 +98,6 @@ export const YouTubeVideoPlayer: React.FC<YouTubeVideoPlayerProps> = ({
           )}
         </View>
       )}
-
-      {/* Kids Touch Lock Overlay */}
-      {isKidsLocked && (
-        <View style={styles.lockedOverlay}>
-          <TouchableOpacity
-            style={styles.lockBadge}
-            activeOpacity={0.8}
-            onPress={onToggleKidsLock}
-          >
-            <MaterialCommunityIcons name="lock" size={20} color="#ffffff" />
-            <Text style={styles.lockBadgeText}>Chạm để mở khóa màn hình</Text>
-          </TouchableOpacity>
-        </View>
-      )}
     </View>
   );
 };
@@ -129,36 +111,6 @@ const styles = StyleSheet.create({
   webContainer: {
     width: '100%',
     height: '100%',
-  },
-  lockedOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.45)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    zIndex: 99,
-  },
-  lockBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255, 0, 0, 0.85)',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 24,
-    gap: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 5,
-  },
-  lockBadgeText: {
-    color: '#ffffff',
-    fontSize: 14,
-    fontWeight: '700',
   },
   endedOverlay: {
     position: 'absolute',

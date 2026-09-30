@@ -10,6 +10,11 @@ import { MOCK_SHORTS } from '../features/shorts/data/mockShorts';
  * 3. Fallback: Host computer Wi-Fi LAN IP (192.168.2.103:8080) or localhost for web.
  */
 const getApiBaseUrl = (): string => {
+  // If explicitly configured via environment variable (e.g. Koyeb cloud URL)
+  if (process.env.EXPO_PUBLIC_API_URL) {
+    return process.env.EXPO_PUBLIC_API_URL.replace(/\/+$/, '');
+  }
+
   try {
     const scriptURL: string | undefined = NativeModules?.SourceCode?.scriptURL;
     if (scriptURL) {
@@ -30,7 +35,7 @@ const getApiBaseUrl = (): string => {
   }
 
   // Fallback to computer LAN IP on local Wi-Fi for Expo Go physical devices
-  return 'http://192.168.2.103:8080';
+  return 'http://192.168.1.26:8080';
 };
 
 export const API_BASE_URL = getApiBaseUrl();

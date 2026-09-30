@@ -18,18 +18,23 @@ import { UpNextVideoCard } from '../components/UpNextVideoCard';
 import { MOCK_VIDEOS } from '../../feed/data/mockVideos';
 import { formatViews } from '../../../utils/formatters';
 import { fetchAppStatus, recordWatchHistory, fetchVideos } from '../../../services/apiClient';
+import { CommentsBottomSheet } from '../../comments/components/CommentsBottomSheet';
+import { getComments } from '../../../services/commentService';
+import { VideoComment } from '../../../types/models';
 
 export const PlayerScreen: React.FC<PlayerScreenProps> = ({ navigation, route }) => {
   const { colors, isDark } = useAppTheme();
   const [currentVideo, setCurrentVideo] = useState<Video>(route.params.video);
   const [upNextList, setUpNextList] = useState<Video[]>([]);
   const [isPlaying, setIsPlaying] = useState<boolean>(true);
-  const [isKidsLocked, setIsKidsLocked] = useState<boolean>(false);
   const [isEnded, setIsEnded] = useState<boolean>(false);
   const [isSubscribed, setIsSubscribed] = useState<boolean>(false);
   const [likeCount, setLikeCount] = useState<number>(34200);
   const [isLiked, setIsLiked] = useState<boolean>(false);
   const [isTitleExpanded, setIsTitleExpanded] = useState<boolean>(false);
+  const [isCommentsOpen, setIsCommentsOpen] = useState<boolean>(false);
+  const [commentsCount, setCommentsCount] = useState<number>(0);
+  const [topComment, setTopComment] = useState<VideoComment | null>(null);
 
   const [remainingSeconds, setRemainingSeconds] = useState<number>(1800);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -54,9 +59,21 @@ export const PlayerScreen: React.FC<PlayerScreenProps> = ({ navigation, route })
     });
   }, [navigation]);
 
+  // Load comments for current video
+  useEffect(() => {
+    getComments(currentVideo.id).then((list) => {
+      setCommentsCount(list.length);
+      if (list.length > 0) {
+        setTopComment(list[0]);
+      } else {
+        setTopComment(null);
+      }
+    });
+  }, [currentVideo.id]);
+
   // Periodic heartbeat reporting watched duration
   useEffect(() => {
-    if (isPlaying && !isKidsLocked) {
+    if (isPlaying) {
       timerRef.current = setInterval(() => {
         watchedSecondsRef.current += 1;
 
@@ -89,7 +106,7 @@ export const PlayerScreen: React.FC<PlayerScreenProps> = ({ navigation, route })
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
-  }, [isPlaying, isKidsLocked, navigation, currentVideo.id]);
+  }, [isPlaying, navigation, currentVideo.id]);
 
   // Flush remaining watched duration on unmount
   useEffect(() => {
@@ -135,18 +152,6 @@ export const PlayerScreen: React.FC<PlayerScreenProps> = ({ navigation, route })
     navigation.goBack();
   };
 
-  const handleToggleKidsLock = () => {
-    const nextState = !isKidsLocked;
-    setIsKidsLocked(nextState);
-    if (nextState) {
-      Alert.alert(
-        '🔒 Đã bật Khóa Màn Hình Trẻ Em',
-        'Các phím đã được khóa để bé không chạm nhầm. Chạm biểu tượng khóa để mở lại.'
-      );
-    }
-  };
-
-
   const handleLike = () => {
     if (isLiked) {
       setIsLiked(false);
@@ -170,10 +175,7 @@ export const PlayerScreen: React.FC<PlayerScreenProps> = ({ navigation, route })
           <MaterialCommunityIcons name="timer-outline" size={14} color={colors.youtubeRed} />
           <Text style={[styles.screenTimeText, { color: colors.textPrimary }]}>Còn {remainingMinutes} phút</Text>
         </View>
-        <TouchableOpacity style={[styles.kidsLockBtn, isKidsLocked && styles.kidsLockBtnActive]} onPress={handleToggleKidsLock}>
-          <MaterialCommunityIcons name={isKidsLocked ? 'lock' : 'lock-open-outline'} size={18} color={isKidsLocked ? '#fff' : colors.textPrimary} />
-          <Text style={[styles.kidsLockText, { color: isKidsLocked ? '#fff' : colors.textPrimary }]}>{isKidsLocked ? 'Đã khóa' : 'Khóa chạm'}</Text>
-        </TouchableOpacity>
+        <View style={styles.topBarSpacer} />
       </View>
       <YouTubeVideoPlayer
         videoId={currentVideo.youtubeVideoId}
@@ -193,8 +195,6 @@ export const PlayerScreen: React.FC<PlayerScreenProps> = ({ navigation, route })
             setIsPlaying(false);
           }
         }}
-        isKidsLocked={isKidsLocked}
-        onToggleKidsLock={handleToggleKidsLock}
         isEnded={isEnded}
         onReplay={handleReplay}
       />
@@ -258,6 +258,41 @@ export const PlayerScreen: React.FC<PlayerScreenProps> = ({ navigation, route })
           </TouchableOpacity>
         </ScrollView>
 
+        {/* Comments Preview Card (YouTube mobile style) */}
+        <TouchableOpacity
+          style={[styles.commentsTeaserCard, { backgroundColor: colors.chipInactiveBg }]}
+          activeOpacity={0.7}
+          onPress={() => setIsCommentsOpen(true)}
+        >
+          <View style={styles.commentsTeaserHeader}>
+            <View style={styles.commentsTeaserTitleRow}>
+              <Text style={[styles.commentsTeaserTitle, { color: colors.textPrimary }]}>Bình luận</Text>
+              <View style={[styles.commentsCountChip, { backgroundColor: colors.border }]}>
+                <Text style={[styles.commentsCountChipText, { color: colors.textPrimary }]}>
+                  {commentsCount}
+                </Text>
+              </View>
+            </View>
+            <MaterialCommunityIcons name="unfold-more-horizontal" size={20} color={colors.textSecondary} />
+          </View>
+
+          {topComment ? (
+            <View style={styles.commentsPreviewBody}>
+              <View style={[styles.previewAvatarCircle, { backgroundColor: topComment.avatarBgColor }]}>
+                <Text style={styles.previewAvatarEmoji}>{topComment.avatarEmoji}</Text>
+              </View>
+              <Text style={[styles.previewCommentText, { color: colors.textPrimary }]} numberOfLines={1}>
+                <Text style={styles.previewCommentAuthor}>{topComment.authorName}: </Text>
+                {topComment.content}
+              </Text>
+            </View>
+          ) : (
+            <Text style={[styles.previewPlaceholder, { color: colors.textSecondary }]}>
+              Bé hãy là người đầu tiên gửi lời chào nhé! 💬
+            </Text>
+          )}
+        </TouchableOpacity>
+
         <View style={styles.upNextHeader}>
           <Text style={[styles.upNextTitle, { color: colors.textPrimary }]}>Video tiếp theo</Text>
           <View style={[styles.autoplayBadge, { backgroundColor: colors.chipInactiveBg }]}>
@@ -271,6 +306,18 @@ export const PlayerScreen: React.FC<PlayerScreenProps> = ({ navigation, route })
         ))}
       </ScrollView>
 
+      {/* Interactive Kids Comments Bottom Sheet */}
+      <CommentsBottomSheet
+        visible={isCommentsOpen}
+        videoId={currentVideo.id}
+        onClose={() => setIsCommentsOpen(false)}
+        onCommentsCountChange={(count) => {
+          setCommentsCount(count);
+          getComments(currentVideo.id).then((list) => {
+            if (list.length > 0) setTopComment(list[0]);
+          });
+        }}
+      />
     </SafeAreaView>
   );
 };
@@ -281,9 +328,7 @@ const styles = StyleSheet.create({
   backButton: { padding: 4 },
   screenTimeChip: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 14, gap: 5 },
   screenTimeText: { fontSize: 12, fontWeight: '600' },
-  kidsLockBtn: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 16, borderWidth: 1, borderColor: 'rgba(128,128,128,0.3)', gap: 4 },
-  kidsLockBtnActive: { backgroundColor: '#cc0000', borderColor: '#cc0000' },
-  kidsLockText: { fontSize: 12, fontWeight: '700' },
+  topBarSpacer: { width: 30 },
   scrollContent: { flex: 1 },
   scrollInner: { paddingBottom: 28 },
   titleSection: { paddingHorizontal: 14, paddingTop: 12, paddingBottom: 6 },
@@ -304,6 +349,64 @@ const styles = StyleSheet.create({
   actionDivider: { width: 1, height: 18, marginHorizontal: 4 },
   actionPill: { flexDirection: 'row', alignItems: 'center', borderRadius: 20, paddingHorizontal: 12, paddingVertical: 6, gap: 6 },
   actionText: { fontSize: 12, fontWeight: '600' },
+  commentsTeaserCard: {
+    marginHorizontal: 14,
+    marginTop: 10,
+    marginBottom: 4,
+    padding: 12,
+    borderRadius: 14,
+  },
+  commentsTeaserHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  commentsTeaserTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  commentsTeaserTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  commentsCountChip: {
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: 10,
+  },
+  commentsCountChipText: {
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  commentsPreviewBody: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  previewAvatarCircle: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  previewAvatarEmoji: {
+    fontSize: 12,
+  },
+  previewCommentText: {
+    flex: 1,
+    fontSize: 12,
+    lineHeight: 16,
+  },
+  previewCommentAuthor: {
+    fontWeight: '700',
+  },
+  previewPlaceholder: {
+    fontSize: 12,
+    fontStyle: 'italic',
+  },
   upNextHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 14, paddingTop: 14, paddingBottom: 6 },
   upNextTitle: { fontSize: 15, fontWeight: '700' },
   autoplayBadge: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 14, gap: 4 },

@@ -18,6 +18,7 @@ import { MOCK_SHORTS } from '../data/mockShorts';
 import { ShortsVideoItem } from '../components/ShortsVideoItem';
 import { YouTubeBottomBar } from '../../../components/YouTubeBottomBar';
 import { fetchAppStatus, fetchShorts, recordWatchHistory } from '../../../services/apiClient';
+import { CommentsBottomSheet } from '../../comments/components/CommentsBottomSheet';
 
 export const ShortsScreen: React.FC<ShortsScreenProps> = ({ navigation }) => {
   const { width: windowWidth, height: windowHeight } = useWindowDimensions();
@@ -35,6 +36,8 @@ export const ShortsScreen: React.FC<ShortsScreenProps> = ({ navigation }) => {
   const [shorts, setShorts] = useState<ShortVideo[]>(MOCK_SHORTS);
   const [activeIndex, setActiveIndex] = useState<number>(0);
   const [remainingSeconds, setRemainingSeconds] = useState<number>(1800);
+  const [isCommentsOpen, setIsCommentsOpen] = useState<boolean>(false);
+  const [commentsCountMap, setCommentsCountMap] = useState<Record<string | number, number>>({});
 
   // Global sound state across Shorts feed (Default: false -> Auto Unmute Sound Enabled)
   const [isMuted, setIsMuted] = useState<boolean>(false);
@@ -227,6 +230,8 @@ export const ShortsScreen: React.FC<ShortsScreenProps> = ({ navigation }) => {
             itemWidth={contentWidth}
             isMuted={isMuted}
             onToggleMute={handleToggleMute}
+            commentsCount={commentsCountMap[item.id] || item.commentsCount || 12}
+            onOpenComments={() => setIsCommentsOpen(true)}
           />
         )}
       />
@@ -262,6 +267,23 @@ export const ShortsScreen: React.FC<ShortsScreenProps> = ({ navigation }) => {
           }
         }}
       />
+
+      {/* Interactive Kids Comments Bottom Sheet for Shorts */}
+      {shorts[activeIndex] && (
+        <CommentsBottomSheet
+          visible={isCommentsOpen}
+          videoId={shorts[activeIndex].id}
+          videoTitle={shorts[activeIndex].title}
+          onClose={() => setIsCommentsOpen(false)}
+          onCommentsCountChange={(count) => {
+            const currentId = shorts[activeIndex].id;
+            setCommentsCountMap((prev) => ({
+              ...prev,
+              [currentId]: count,
+            }));
+          }}
+        />
+      )}
     </View>
   );
 };

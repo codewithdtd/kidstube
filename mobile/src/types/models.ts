@@ -39,6 +39,22 @@ export interface ShortVideo {
   soundTitle?: string;
 }
 
+/**
+ * Interactive comment data model for kid users and peer comments
+ */
+export interface VideoComment {
+  id: string;
+  videoId: number | string;
+  authorName: string;
+  avatarBgColor: string;
+  avatarEmoji: string;
+  content: string;
+  createdAt: string;
+  likesCount: number;
+  isLiked?: boolean;
+  isKidUser?: boolean;
+}
+
 
 /**
  * Screen Time Status model corresponding to Spring Boot AppStatusResponse

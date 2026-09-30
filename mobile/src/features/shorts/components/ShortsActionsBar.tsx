@@ -9,8 +9,8 @@ interface ShortsActionsBarProps {
   onTogglePlay: () => void;
   isMuted: boolean;
   onToggleMute: () => void;
-  isKidsLocked: boolean;
-  onToggleKidsLock: () => void;
+  commentsCount?: number;
+  onOpenComments: () => void;
   onShare?: () => void;
 }
 
@@ -20,8 +20,8 @@ export const ShortsActionsBar: React.FC<ShortsActionsBarProps> = ({
   onTogglePlay,
   isMuted,
   onToggleMute,
-  isKidsLocked,
-  onToggleKidsLock,
+  commentsCount,
+  onOpenComments,
   onShare,
 }) => {
   const [isLiked, setIsLiked] = useState<boolean>(false);
@@ -123,20 +123,20 @@ export const ShortsActionsBar: React.FC<ShortsActionsBarProps> = ({
         <Text style={styles.actionLabel}>Không thích</Text>
       </TouchableOpacity>
 
-      {/* 4. Kids Touch Lock Button */}
+      {/* 4. Comments Button (Interactive for 6yo child) */}
       <TouchableOpacity
         style={styles.actionBtn}
         activeOpacity={0.7}
-        onPress={onToggleKidsLock}
+        onPress={onOpenComments}
       >
-        <View style={[styles.iconCircle, isKidsLocked && styles.lockedCircle]}>
+        <View style={styles.iconCircle}>
           <MaterialCommunityIcons
-            name={isKidsLocked ? 'lock' : 'lock-open-variant-outline'}
-            size={26}
-            color={isKidsLocked ? '#f59e0b' : '#ffffff'}
+            name="comment-text-multiple-outline"
+            size={24}
+            color="#ffffff"
           />
         </View>
-        <Text style={styles.actionLabel}>{isKidsLocked ? 'Đã khóa' : 'Khóa chạm'}</Text>
+        <Text style={styles.actionLabel}>{formatCount(commentsCount || short.commentsCount || 12)}</Text>
       </TouchableOpacity>
 
       {/* 5. Share Button */}
@@ -194,9 +194,6 @@ const styles = StyleSheet.create({
   },
   pausedCircle: {
     backgroundColor: '#ef4444',
-  },
-  lockedCircle: {
-    backgroundColor: 'rgba(245, 158, 11, 0.3)',
   },
   mutedCircle: {
     backgroundColor: 'rgba(245, 158, 11, 0.4)',
